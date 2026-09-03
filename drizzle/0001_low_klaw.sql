@@ -1,0 +1,1 @@
+ALTER TABLE "workspaces" ADD COLUMN "registration_open" boolean DEFAULT true NOT NULL;

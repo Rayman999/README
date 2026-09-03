@@ -1,0 +1,332 @@
+@import "tailwindcss";
+
+/*
+ * Theme tokens — verbatim from theme.md §2. Do not edit values here;
+ * theme.md is the source of truth and is locked.
+ */
+:root {
+  /* Base shell — flat, nearly black */
+  --bg-base:         #090A0B;
+  --bg-shell:        #0B0C0E;
+  --bg-shell-alt:    #0D0E10;
+
+  /* Raised documentation panel */
+  --surface-raised:      #141517;
+  --surface-raised-top:  #17181A;  /* gradient top */
+  --surface-raised-mid:  #141517;  /* gradient middle */
+  --surface-raised-base: #111214;  /* gradient bottom */
+
+  /* Inset surfaces — code blocks, embedded content */
+  --surface-inset:   #0D0E10;
+  --surface-sunken:  #0B0C0E;
+
+  /* Text */
+  --text-primary:    #E7E7E7;
+  --text-heading:    #DEDEDE;
+  --text-secondary:  #989A9F;
+  --text-tertiary:   #8B8E94;
+  --text-muted:      #64676D;
+
+  /* Borders — barely there */
+  --border-faint:    rgba(255,255,255,0.04);
+  --border-subtle:   rgba(255,255,255,0.05);
+  --border-visible:  rgba(255,255,255,0.07);
+
+  /* Interactive states */
+  --state-hover:     rgba(255,255,255,0.03);
+  --state-active:    rgba(255,255,255,0.05);
+  --state-selected:  rgba(255,255,255,0.05);
+
+  /* Elevation */
+  --shadow-panel:    0 18px 60px rgba(0,0,0,0.25);
+  --shadow-ambient:  0 2px 12px rgba(0,0,0,0.18);
+  --highlight-top:   inset 0 1px 0 rgba(255,255,255,0.03);
+  --shadow-inset:    inset 0 1px 2px rgba(0,0,0,0.35);
+
+  /* Radii */
+  --radius-panel:    28px;   /* 24–32 range */
+  --radius-code:     12px;   /* 10–14 range */
+  --radius-control:  9px;    /* 8–10 range */
+  --radius-input:    10px;   /* 8–12 range */
+
+  /* Muted syntax palette */
+  --syn-keyword:     #A9A3C2;  /* muted lavender-grey */
+  --syn-string:      #9FB09B;  /* muted sage */
+  --syn-function:    #A3B0BC;  /* soft pale blue-grey */
+  --syn-variable:    #C9CACD;
+  --syn-number:      #B5AFA3;
+  --syn-comment:     #5B5E63;
+  --syn-punctuation: #7A7D82;
+
+  /* Motion */
+  --ease:            cubic-bezier(0.4, 0.0, 0.2, 1);
+  --dur-fast:        150ms;
+  --dur-base:        200ms;
+  --dur-slow:        250ms;
+}
+
+/*
+ * Tailwind v4 theme mapping — exposes the tokens as utilities
+ * (bg-base, bg-shell, text-primary, border-faint, rounded-panel,
+ * shadow-panel, ease-base, …) without duplicating any values.
+ */
+@theme inline {
+  --color-*: initial;
+
+  --color-base:               var(--bg-base);
+  --color-shell:              var(--bg-shell);
+  --color-shell-alt:          var(--bg-shell-alt);
+
+  --color-raised:             var(--surface-raised);
+  --color-raised-top:         var(--surface-raised-top);
+  --color-raised-mid:         var(--surface-raised-mid);
+  --color-raised-base:        var(--surface-raised-base);
+  --color-inset:              var(--surface-inset);
+  --color-sunken:             var(--surface-sunken);
+
+  --color-primary:            var(--text-primary);
+  --color-heading:            var(--text-heading);
+  --color-secondary:          var(--text-secondary);
+  --color-tertiary:           var(--text-tertiary);
+  --color-muted:              var(--text-muted);
+
+  --color-border-faint:       var(--border-faint);
+  --color-border-subtle:      var(--border-subtle);
+  --color-border-visible:     var(--border-visible);
+
+  --color-state-hover:        var(--state-hover);
+  --color-state-active:       var(--state-active);
+  --color-state-selected:     var(--state-selected);
+
+  --color-syn-keyword:        var(--syn-keyword);
+  --color-syn-string:         var(--syn-string);
+  --color-syn-function:       var(--syn-function);
+  --color-syn-variable:       var(--syn-variable);
+  --color-syn-number:         var(--syn-number);
+  --color-syn-comment:        var(--syn-comment);
+  --color-syn-punctuation:    var(--syn-punctuation);
+
+  --radius-panel:             var(--radius-panel);
+  --radius-code:              var(--radius-code);
+  --radius-control:           var(--radius-control);
+  --radius-input:             var(--radius-input);
+
+  --shadow-panel:             var(--shadow-panel);
+  --shadow-ambient:           var(--shadow-ambient);
+  --shadow-highlight-top:     var(--highlight-top);
+  --shadow-inset-soft:        var(--shadow-inset);
+
+  --ease-base:                var(--ease);
+
+  --font-sans:                var(--font-inter), "Inter", "SF Pro Text", "IBM Plex Sans", system-ui, sans-serif;
+  --font-mono:                var(--font-jetbrains-mono), "JetBrains Mono", "IBM Plex Mono", ui-monospace, monospace;
+}
+
+body {
+  background: var(--bg-base);
+  color: var(--text-secondary);
+  font-family: var(--font-sans);
+  font-size: 15px;
+  line-height: 1.7;
+  -webkit-font-smoothing: antialiased;
+}
+
+::selection {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-primary);
+}
+
+/* ---------------------------------------------------------------------------
+ * Depth +1 — the raised documentation panel.
+ * theme.md §5. This is a slope out of the shell, not a card on top of it:
+ * the halo bleeds outward behind the panel, the shadow is large and faint,
+ * and the border is a hairline at 0.04 alpha. Do not strengthen any of them.
+ * ------------------------------------------------------------------------- */
+.doc-panel {
+  position: relative;
+  border-radius: var(--radius-panel);
+  background: linear-gradient(
+    180deg,
+    var(--surface-raised-top) 0%,
+    var(--surface-raised-mid) 45%,
+    var(--surface-raised-base) 100%
+  );
+  /* No outer shadow.
+     The shell is #090A0B — there is no darker value available, so a drop
+     shadow cannot render as depth here; it only deposits a murky ring around
+     the panel. On a near-black ground elevation is carried by the raised
+     surface simply being lighter, which the gradient above already does.
+     What remains is a quiet edge and the crest highlight. */
+  border: 1px solid var(--border-subtle);
+  box-shadow: var(--highlight-top);
+}
+
+/* Same raised treatment as the doc panel, at a smaller radius — used for
+   standalone surfaces like the sign-in form. No outer shadow, for the same
+   reason: there is nothing darker than the shell to cast one onto. */
+.auth-panel {
+  border-radius: 18px;
+  background: linear-gradient(
+    180deg,
+    var(--surface-raised-top) 0%,
+    var(--surface-raised-base) 100%
+  );
+  border: 1px solid var(--border-subtle);
+  box-shadow: var(--highlight-top);
+}
+
+/* ---------------------------------------------------------------------------
+ * Depth −1 — inset surfaces
+ * ------------------------------------------------------------------------- */
+.code-block {
+  background: var(--surface-inset);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-code);
+  box-shadow: var(--shadow-inset);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  line-height: 1.65;
+  overflow-x: auto;
+}
+
+.code-block__title {
+  font-family: var(--font-sans);
+  font-size: 11.5px;
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--border-faint);
+  padding: 9px 18px;
+}
+
+.code-block__body {
+  padding: 16px 18px;
+  color: var(--text-primary);
+}
+
+.inline-code {
+  background: var(--surface-inset);
+  border-radius: 6px;
+  padding: 2px 6px;
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 0.92em;
+}
+
+.callout {
+  background: rgba(255, 255, 255, 0.022);
+  border: 1px solid var(--border-subtle);
+  border-left: 2px solid rgba(255, 255, 255, 0.10);
+  border-radius: var(--radius-code);
+  padding: 14px 16px;
+  color: var(--text-secondary);
+  font-size: 14px;
+}
+
+.callout__label {
+  margin: 0 0 4px;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+/* ---------------------------------------------------------------------------
+ * Rendered markdown body — theme.md §12. Sizes/weights/colours per the type
+ * table; vertical rhythm ~32px above h2, ~24px above h3, ~16px between
+ * paragraphs. Applied to the server-rendered HTML from the markdown pipeline.
+ * ------------------------------------------------------------------------- */
+.doc-body {
+  color: var(--text-secondary);
+  font-size: 15px;
+  line-height: 1.7;
+}
+.doc-body > * + * { margin-top: 16px; }
+.doc-body h2 {
+  margin-top: 32px;
+  font-size: 22px;
+  font-weight: 600;
+  line-height: 1.3;
+  color: var(--text-heading);
+  scroll-margin-top: 96px;
+}
+.doc-body h2 + * { margin-top: 12px; }
+.doc-body h3 {
+  margin-top: 24px;
+  font-size: 16.5px;
+  font-weight: 600;
+  line-height: 1.4;
+  color: var(--text-primary);
+  scroll-margin-top: 96px;
+}
+.doc-body h3 + * { margin-top: 10px; }
+.doc-body ul,
+.doc-body ol {
+  padding-left: 1.4em;
+}
+.doc-body ul { list-style: disc; }
+.doc-body ol { list-style: decimal; }
+.doc-body li + li { margin-top: 6px; }
+.doc-body li::marker { color: var(--text-muted); }
+.doc-body a {
+  color: var(--text-primary);
+  text-decoration: underline;
+  text-decoration-color: rgba(255, 255, 255, 0.15);
+  text-underline-offset: 2px;
+  transition: text-decoration-color var(--dur-base) var(--ease);
+}
+.doc-body a:hover { text-decoration-color: rgba(255, 255, 255, 0.4); }
+.doc-body strong { color: var(--text-primary); font-weight: 600; }
+.doc-body hr {
+  margin: 32px 0;
+  border: 0;
+  border-top: 1px solid var(--border-subtle);
+}
+.doc-body blockquote {
+  padding-left: 14px;
+  border-left: 2px solid var(--border-visible);
+  color: var(--text-tertiary);
+}
+.doc-body table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13.5px;
+}
+.doc-body th,
+.doc-body td {
+  border-bottom: 1px solid var(--border-subtle);
+  padding: 9px 12px;
+  text-align: left;
+  vertical-align: top;
+}
+.doc-body th {
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.doc-body td { color: var(--text-secondary); }
+.doc-body img { max-width: 100%; border-radius: var(--radius-code); }
+
+/* Quiet scrollbars — the shell should not sprout a bright track. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.08) transparent;
+}
+*::-webkit-scrollbar { width: 10px; height: 10px; }
+*::-webkit-scrollbar-track { background: transparent; }
+*::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  border: 3px solid transparent;
+  background-clip: content-box;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0ms !important;
+    animation-duration: 0ms !important;
+  }
+}

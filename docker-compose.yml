@@ -1,0 +1,16 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: readme-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: readme
+      POSTGRES_PASSWORD: readme
+      POSTGRES_DB: readme
+    ports:
+      - "5433:5432"
+    volumes:
+      - readme-pgdata:/var/lib/postgresql/data
+
+volumes:
+  readme-pgdata:
