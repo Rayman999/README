@@ -37,7 +37,7 @@ test("OAuth + actual MCP transport: isolation, permissions, revisions, replay an
     const stored = await db.query.oauthClients.findFirst({ where: eq(s.oauthClients.id, registered.clientId) });
     assert.notEqual(stored?.secretHash, registered.clientSecret);
     await assert.rejects(oauth.authenticateClient(registered.clientId, "wrong"));
-    await oauth.authenticateClient(registered.clientId, registered.clientSecret);
+    await oauth.authenticateClient(registered.clientId, registered.clientSecret!);
     const verifier = secret();
     const authorization = { client_id: registered.clientId, response_type: "code", redirect_uri: callback, code_challenge: challengeFor(verifier), code_challenge_method: "S256", state: "test-state", scope: "docs:read docs:write", resource: resource() };
     for (const bad of [{ redirect_uri: callback + "/evil" }, { code_challenge_method: "plain" }, { resource: "https://evil.test" }, { scope: "admin" }]) await assert.rejects(oauth.validateAuthorization({ ...authorization, ...bad }));

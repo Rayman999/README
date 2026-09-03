@@ -37,6 +37,18 @@ export default async function ConnectionsPage() {
       </ol>
       <p className="mt-5 text-xs text-muted">No OpenAI API key or database password is needed. This connection does not import your past conversations automatically.</p>
     </section>
+    <section className="mt-6 rounded-input border border-border-visible p-5">
+      <h2 className="text-lg font-medium text-heading">Connect Codex CLI</h2>
+      <ol className="mt-4 list-decimal space-y-3 pl-5 text-sm leading-relaxed text-secondary">
+        <li>An owner registers a <span className="text-primary">local or CLI app</span> below with the callback <code className="rounded bg-white/5 px-1.5 py-0.5 text-primary">http://127.0.0.1/callback</code> and copies the client ID. There is no secret to copy.</li>
+        <li>Add the server, passing that client ID so Codex skips dynamic registration:
+          <code className="mt-2 block break-all rounded bg-white/5 p-3 text-primary">codex mcp add readme --url {resource()} --oauth-client-id &lt;client-id&gt;</code></li>
+        <li>Set the resource indicator in <code className="rounded bg-white/5 px-1.5 py-0.5 text-primary">~/.codex/config.toml</code> under that server:
+          <code className="mt-2 block break-all rounded bg-white/5 p-3 text-primary">oauth_resource = &quot;{resource()}&quot;</code></li>
+        <li>Run <code className="rounded bg-white/5 px-1.5 py-0.5 text-primary">codex mcp login readme</code>, then sign into README and approve access in the browser window it opens.</li>
+      </ol>
+      <p className="mt-5 text-xs text-muted">Codex listens on a fresh loopback port each login, so the registered callback carries no port. Only 127.0.0.1 and [::1] are accepted, and only over loopback.</p>
+    </section>
     {owner && <section className="mt-10"><h2 className="text-xl font-medium text-heading">Register an agent app</h2><ClientForm />
       <ul className="mt-5 divide-y divide-border-subtle">{clients.map((client) => <li key={client.id} className="flex flex-wrap items-center justify-between gap-3 py-4"><div><p className="text-sm">{client.name}</p><p className="mt-1 break-all text-xs text-muted">{client.id}</p></div>{client.revokedAt ? <span className="text-xs text-muted">Disabled</span> : <form action={disableClient}><input type="hidden" name="id" value={client.id} /><button className="min-h-11 rounded-control border border-border-visible px-3 text-xs hover:bg-white/5">Disable app access</button></form>}</li>)}</ul>
     </section>}

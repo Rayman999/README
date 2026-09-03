@@ -80,6 +80,9 @@ document before retrying. Slug uniqueness prevents duplicate create retries.
   bodies at the reverse proxy. Configure access logs to omit OAuth query strings.
 - The generic MCP endpoint can support other clients, but Claude setup has not
   been verified. Register a separate client with its exact callback URLs.
+- Codex CLI connects as a separate *public* client (no secret, PKCE only, and
+  loopback callbacks). See `docs/CODEX-CONNECTION.md`. Nothing about the
+  confidential client type used here changes because of it.
 
 ## Tests
 

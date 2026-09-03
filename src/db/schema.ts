@@ -268,7 +268,12 @@ export const oauthClients = pgTable("oauth_clients", {
   id: uuid("id").primaryKey().defaultRandom(),
   workspaceId: uuid("workspace_id").notNull().references(() => workspaces.id, { onDelete: "cascade" }),
   name: text("name").notNull(),
-  secretHash: text("secret_hash").notNull(),
+  // Confidential clients (ChatGPT) authenticate with a secret at the token
+  // endpoint. Public clients (Codex, and any other native/CLI app that cannot
+  // keep a secret) authenticate with PKCE alone and have no secret at all --
+  // hence the nullable hash. The default keeps every existing row confidential.
+  clientType: text("client_type", { enum: ["confidential", "public"] }).notNull().default("confidential"),
+  secretHash: text("secret_hash"),
   redirectUris: text("redirect_uris").array().notNull(),
   scopes: text("scopes").array().notNull(),
   revokedAt: timestamp("revoked_at", { withTimezone: true }),

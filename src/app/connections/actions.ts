@@ -20,7 +20,7 @@ async function currentMember() {
   return member;
 }
 
-export type ClientState = { error?: string; clientId?: string; clientSecret?: string };
+export type ClientState = { error?: string; clientId?: string; clientSecret?: string; clientType?: "confidential" | "public" };
 export async function createClient(_previous: ClientState, form: FormData): Promise<ClientState> {
   const member = await currentMember();
   if (member.role !== "owner") return { error: "Only owners can register agent apps." };
@@ -29,11 +29,13 @@ export async function createClient(_previous: ClientState, form: FormData): Prom
     if (existing.length >= 50) return { error: "Client limit reached. Contact the server administrator." };
     const result = await registerClient(member.workspaceId, {
       name: form.get("name"),
+      clientType: form.get("clientType") === "public" ? "public" : "confidential",
       redirectUris: String(form.get("redirectUris") ?? "").split(/\r?\n/).map((s) => s.trim()).filter(Boolean),
       scopes: form.get("write") === "on" ? ["docs:read", "docs:write"] : ["docs:read"],
     });
     revalidatePath("/connections");
-    return result;
+    // A public client has no secret; the panel must not imply one was withheld.
+    return { clientId: result.clientId, clientType: result.clientType, ...(result.clientSecret ? { clientSecret: result.clientSecret } : {}) };
   } catch (error) {
     return { error: error instanceof z.ZodError ? error.issues[0].message : "Could not create the client. Try again." };
   }
