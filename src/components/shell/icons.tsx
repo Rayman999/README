@@ -17,6 +17,7 @@ export const ICONS = {
   plus: "M8 3.5v9M3.5 8h9",
   folder: "M1.5 4.5a1 1 0 0 1 1-1h3l1.5 1.5h5.5a1 1 0 0 1 1 1v6a1 1 0 0 1-1 1h-10a1 1 0 0 1-1-1z",
   book: "M2.5 2.5h4a2 2 0 0 1 2 2v9a1.5 1.5 0 0 0-1.5-1.5h-4.5zM13.5 2.5h-4a2 2 0 0 0-2 2v9a1.5 1.5 0 0 1 1.5-1.5h4.5z",
+  user: "M13.5 14v-1.5a3 3 0 0 0-3-3h-5a3 3 0 0 0-3 3V14M8 7.5a2.75 2.75 0 1 0 0-5.5 2.75 2.75 0 0 0 0 5.5Z",
 } as const;
 
 export type IconName = keyof typeof ICONS;

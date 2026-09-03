@@ -63,6 +63,15 @@ export function Header({
           </button>
         ))}
 
+        <Link
+          href="/profile"
+          title={userEmail ? `Profile - ${userEmail}` : "Profile"}
+          aria-label="Profile"
+          className="ease-base rounded-control p-2 text-muted transition-colors duration-200 hover:bg-state-hover hover:text-primary"
+        >
+          <Icon path={ICONS.user} />
+        </Link>
+
         {signOutAction && (
           <form action={signOutAction} className="flex">
             <button

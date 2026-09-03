@@ -14,15 +14,19 @@ export function LoginForm({
   githubAction,
   githubConfigured,
   isFirstUser,
+  signUpAllowed,
 }: {
   githubAction: () => Promise<void>;
   githubConfigured: boolean;
   isFirstUser: boolean;
+  /** Owners can close sign-up; when they have, the tab is not offered at all. */
+  signUpAllowed: boolean;
 }) {
   const [mode, setMode] = useState<Mode>(isFirstUser ? "signup" : "signin");
   const [showPassword, setShowPassword] = useState(false);
 
-  const action = mode === "signin" ? signInWithPassword : signUpWithPassword;
+  const signingUp = mode === "signup" && signUpAllowed;
+  const action = signingUp ? signUpWithPassword : signInWithPassword;
   const [state, formAction, pending] = useActionState<FormState, FormData>(
     action,
     undefined,
@@ -30,7 +34,10 @@ export function LoginForm({
 
   return (
     <div className="auth-panel p-6">
-      {/* Mode toggle */}
+      {/* Mode toggle. Hidden entirely when sign-up is closed - offering a
+          tab that always fails is worse than not offering it. The action
+          checks the setting again server-side regardless. */}
+      {signUpAllowed && (
       <div
         role="tablist"
         aria-label="Authentication mode"
@@ -53,6 +60,7 @@ export function LoginForm({
           </button>
         ))}
       </div>
+      )}
 
       {state?.error && (
         <div
@@ -65,7 +73,7 @@ export function LoginForm({
       )}
 
       <form action={formAction} noValidate>
-        {mode === "signup" && (
+        {signingUp && (
           <div className="mb-3">
             <label htmlFor="name" className={LABEL_CLASS}>
               Name
@@ -109,9 +117,9 @@ export function LoginForm({
               type={showPassword ? "text" : "password"}
               required
               autoComplete={
-                mode === "signin" ? "current-password" : "new-password"
+                signingUp ? "new-password" : "current-password"
               }
-              placeholder={mode === "signup" ? "At least 8 characters" : "••••••••"}
+              placeholder={signingUp ? "At least 8 characters" : "••••••••"}
               className={`${INPUT_CLASS} pr-11`}
             />
             <button
@@ -125,8 +133,11 @@ export function LoginForm({
           </div>
         </div>
 
-        <Button pending={pending} pendingLabel={mode === "signin" ? "Signing in…" : "Creating account…"}>
-          {mode === "signin" ? "Sign in" : "Create account"}
+        <Button
+          pending={pending}
+          pendingLabel={signingUp ? "Creating account…" : "Signing in…"}
+        >
+          {signingUp ? "Create account" : "Sign in"}
         </Button>
       </form>
 

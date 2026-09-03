@@ -91,6 +91,7 @@ export default async function LoginPage({
             githubAction={githubAction}
             githubConfigured={githubConfigured}
             isFirstUser={isFirstUser}
+            signUpAllowed={isFirstUser || !registrationClosed}
           />
         </div>
 
