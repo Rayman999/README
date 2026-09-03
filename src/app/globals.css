@@ -71,7 +71,14 @@
  * shadow-panel, ease-base, …) without duplicating any values.
  */
 @theme inline {
+  /* Clears Tailwind's default palette so only the tokens below are available
+     as colour utilities. It also removes `white` and `black`, which the app
+     uses throughout for hairline overlays (bg-white/[0.03], border-white/20,
+     bg-black/20) - without these two lines every one of those utilities is
+     silently dropped from the build. */
   --color-*: initial;
+  --color-white:              #ffffff;
+  --color-black:              #000000;
 
   --color-base:               var(--bg-base);
   --color-shell:              var(--bg-shell);
@@ -354,9 +361,13 @@ select option:disabled {
  * Route transitions - theme.md motion tokens only (ease, 200-250ms).
  *
  * The hierarchy reads left to right: going deeper into a project the view
- * swipes in from the right, coming back out it swipes in from the left. The
- * travel is short (28px) and paired with a fade, so it registers as the page
- * settling into place rather than as a slide show.
+ * swipes in from the right, coming back out it swipes in from the left.
+ *
+ * Only the arriving view animates. An outgoing half was tried and removed: it
+ * had to fade the current page to nothing and hold it there until the server
+ * answered, which on these force-dynamic routes reads as the whole app
+ * blinking dark and back. Leaving the old page alone until its replacement is
+ * ready means there is never an empty frame.
  * ------------------------------------------------------------------------- */
 @keyframes route-in-forward {
   from { opacity: 0; transform: translate3d(28px, 0, 0) scale(0.994); }
@@ -366,15 +377,6 @@ select option:disabled {
   from { opacity: 0; transform: translate3d(-28px, 0, 0) scale(0.994); }
   to   { opacity: 1; transform: none; }
 }
-@keyframes route-out-forward {
-  from { opacity: 1; transform: none; }
-  to   { opacity: 0; transform: translate3d(-22px, 0, 0) scale(0.994); }
-}
-@keyframes route-out-back {
-  from { opacity: 1; transform: none; }
-  to   { opacity: 0; transform: translate3d(22px, 0, 0) scale(0.994); }
-}
-
 .route-transition {
   /* No fill mode on the enter half, deliberately. A retained `transform`, even
      an identity one, makes this wrapper the containing block for the fixed
@@ -385,22 +387,13 @@ select option:disabled {
 .route-transition[data-direction="back"] {
   animation-name: route-in-back;
 }
-.route-transition[data-exiting] {
-  /* The exit does hold its end state: the view has to stay off-screen until
-     the router answers, however long that takes. */
-  animation: route-out-forward var(--dur-base) var(--ease) forwards;
-  pointer-events: none;
-}
-.route-transition[data-exiting][data-direction="back"] {
-  animation-name: route-out-back;
-}
-
-/* While the outgoing view is transformed it becomes the containing block for
-   anything fixed inside it, so the header would otherwise drop to the top of
-   the document. --exit-scroll is the scroll offset at the moment of the click.
-   Only the exit needs this: the incoming view is always rendered at scroll 0. */
-.route-transition[data-exiting] [data-fixed-chrome] {
-  top: var(--exit-scroll, 0px);
+/* While the wrapper is mid-animation it is the containing block for anything
+   fixed inside it, so the header would otherwise drop to the top of the
+   document. --nav-scroll is the scroll offset when the view mounted; it is 0
+   for an ordinary navigation and non-zero only when the browser restores a
+   position on back/forward. */
+.route-transition[data-animating] [data-fixed-chrome] {
+  top: var(--nav-scroll, 0px);
 }
 
 /* Content inside the incoming view arrives a beat after the view itself, in
@@ -431,10 +424,7 @@ select option:disabled {
     animation-delay: 0ms !important;
   }
 
-  /* No travel at all - the exit half would otherwise park the outgoing view
-     off-screen for as long as the router takes to answer. */
   .route-transition,
-  .route-transition[data-exiting],
   .stagger > * {
     animation: none !important;
     opacity: 1;

@@ -14,6 +14,7 @@ import { Header } from "@/components/shell/Header";
 import { HEADER_H } from "@/components/shell/icons";
 import { MembersAdmin } from "./MembersAdmin";
 import { NameForm, PasswordForm } from "./AccountForms";
+import { AvatarUpload } from "./AvatarUpload";
 
 export const dynamic = "force-dynamic";
 
@@ -75,6 +76,7 @@ export default async function ProfilePage() {
   ];
 
   const members = owner && workspace ? await listMembers(workspace.id) : [];
+  const initial = (account.name ?? account.email).trim().charAt(0).toUpperCase();
 
   async function signOutAction() {
     "use server";
@@ -103,9 +105,14 @@ export default async function ProfilePage() {
         <div className="mt-4 flex items-center gap-4">
           <span
             aria-hidden
-            className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-border-visible bg-white/[0.03] text-[17px] font-medium text-tertiary"
+            className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-full border border-border-visible bg-white/[0.03] text-[17px] font-medium text-tertiary"
           >
-            {(account.name ?? account.email).trim().charAt(0).toUpperCase()}
+            {account.image ? (
+              /* eslint-disable-next-line @next/next/no-img-element */
+              <img src={account.image} alt="" className="h-full w-full object-cover" />
+            ) : (
+              initial
+            )}
           </span>
           <div className="min-w-0">
             <h1 className="truncate text-[26px] leading-tight font-semibold text-heading">
@@ -151,6 +158,10 @@ export default async function ProfilePage() {
         <section className="mt-10">
           <SectionHeading>Details</SectionHeading>
           <div className="auth-panel mt-4 p-5">
+            <AvatarUpload image={account.image} initial={initial} />
+
+            <hr className="my-6 border-0 border-t border-border-subtle" />
+
             <NameForm initialName={account.name ?? ""} />
 
             <hr className="my-6 border-0 border-t border-border-subtle" />

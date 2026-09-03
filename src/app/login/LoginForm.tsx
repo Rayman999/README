@@ -5,10 +5,9 @@ import { signInWithPassword, signUpWithPassword, type FormState } from "./action
 
 type Mode = "signin" | "signup";
 
-const INPUT_CLASS =
-  "ease-base shadow-inset-soft h-10 w-full rounded-input border border-border-visible bg-white/[0.02] px-3 text-[13.5px] text-primary transition-[background-color,border-color] duration-200 outline-none placeholder:text-muted hover:border-white/[0.09] focus:border-white/[0.14] focus:bg-white/[0.035]";
-
-const LABEL_CLASS = "mb-1.5 block text-[12px] font-medium text-tertiary";
+const INPUT =
+  "ease-base shadow-inset-soft h-11 w-full rounded-input border border-border-visible bg-white/[0.02] px-3.5 text-[14px] text-primary transition-[background-color,border-color] duration-200 outline-none placeholder:text-muted hover:border-white/[0.09] focus:border-white/[0.16] focus:bg-white/[0.035]";
+const LABEL = "mb-2 block text-[12px] font-medium text-tertiary";
 
 export function LoginForm({
   githubAction,
@@ -19,12 +18,14 @@ export function LoginForm({
   githubAction: () => Promise<void>;
   githubConfigured: boolean;
   isFirstUser: boolean;
-  /** Owners can close sign-up; when they have, the tab is not offered at all. */
+  /** Owners can close sign-up; when they have, it is not offered at all. */
   signUpAllowed: boolean;
 }) {
   const [mode, setMode] = useState<Mode>(isFirstUser ? "signup" : "signin");
   const [showPassword, setShowPassword] = useState(false);
 
+  // Sign-up is never reachable while it is closed, whatever the local state
+  // says. The action checks the same setting again server-side.
   const signingUp = mode === "signup" && signUpAllowed;
   const action = signingUp ? signUpWithPassword : signInWithPassword;
   const [state, formAction, pending] = useActionState<FormState, FormData>(
@@ -33,49 +34,32 @@ export function LoginForm({
   );
 
   return (
-    <div className="auth-panel p-6">
-      {/* Mode toggle. Hidden entirely when sign-up is closed - offering a
-          tab that always fails is worse than not offering it. The action
-          checks the setting again server-side regardless. */}
-      {signUpAllowed && (
-      <div
-        role="tablist"
-        aria-label="Authentication mode"
-        className="mb-5 grid grid-cols-2 gap-1 rounded-control border border-border-subtle bg-black/20 p-1"
-      >
-        {(["signin", "signup"] as const).map((m) => (
-          <button
-            key={m}
-            role="tab"
-            type="button"
-            aria-selected={mode === m}
-            onClick={() => setMode(m)}
-            className={`ease-base h-8 rounded-[6px] text-[12.5px] font-medium transition-[background-color,color] duration-200 ${
-              mode === m
-                ? "bg-white/[0.06] text-primary"
-                : "text-muted hover:text-secondary"
-            }`}
-          >
-            {m === "signin" ? "Sign in" : "Create account"}
-          </button>
-        ))}
-      </div>
-      )}
+    <div className="auth-panel px-7 py-7">
+      <h2 className="text-[16px] font-semibold text-heading">
+        {signingUp ? "Create your account" : "Sign in"}
+      </h2>
+      <p className="mt-1 text-[12.5px] leading-relaxed text-muted">
+        {isFirstUser
+          ? "Nobody has signed in yet, so this account becomes the owner."
+          : signingUp
+            ? "You will join as a viewer until an owner changes your role."
+            : "Use the email address your account was created with."}
+      </p>
 
       {state?.error && (
         <div
           role="alert"
-          className="mb-4 rounded-code border border-border-subtle bg-white/[0.022] px-3.5 py-2.5 text-[12.5px] leading-relaxed text-secondary"
+          className="mt-5 rounded-code border border-border-subtle bg-white/[0.022] px-3.5 py-2.5 text-[12.5px] leading-relaxed text-secondary"
           style={{ borderLeft: "2px solid #8A6A62" }}
         >
           {state.error}
         </div>
       )}
 
-      <form action={formAction} noValidate>
+      <form action={formAction} className="mt-5" noValidate>
         {signingUp && (
-          <div className="mb-3">
-            <label htmlFor="name" className={LABEL_CLASS}>
+          <div className="mb-4">
+            <label htmlFor="name" className={LABEL}>
               Name
             </label>
             <input
@@ -85,13 +69,13 @@ export function LoginForm({
               required
               autoComplete="name"
               placeholder="Ada Lovelace"
-              className={INPUT_CLASS}
+              className={INPUT}
             />
           </div>
         )}
 
-        <div className="mb-3">
-          <label htmlFor="email" className={LABEL_CLASS}>
+        <div className="mb-4">
+          <label htmlFor="email" className={LABEL}>
             Email
           </label>
           <input
@@ -102,12 +86,12 @@ export function LoginForm({
             autoFocus
             autoComplete="email"
             placeholder="you@example.com"
-            className={INPUT_CLASS}
+            className={INPUT}
           />
         </div>
 
-        <div className="mb-4">
-          <label htmlFor="password" className={LABEL_CLASS}>
+        <div className="mb-5">
+          <label htmlFor="password" className={LABEL}>
             Password
           </label>
           <div className="relative">
@@ -116,17 +100,15 @@ export function LoginForm({
               name="password"
               type={showPassword ? "text" : "password"}
               required
-              autoComplete={
-                signingUp ? "new-password" : "current-password"
-              }
+              autoComplete={signingUp ? "new-password" : "current-password"}
               placeholder={signingUp ? "At least 8 characters" : "••••••••"}
-              className={`${INPUT_CLASS} pr-11`}
+              className={`${INPUT} pr-11`}
             />
             <button
               type="button"
               onClick={() => setShowPassword((v) => !v)}
               aria-label={showPassword ? "Hide password" : "Show password"}
-              className="ease-base absolute top-1/2 right-1 -translate-y-1/2 rounded-[6px] p-2 text-muted transition-colors duration-200 hover:bg-white/[0.04] hover:text-secondary"
+              className="ease-base absolute top-1/2 right-1.5 -translate-y-1/2 rounded-[7px] p-1.5 text-muted transition-colors duration-200 hover:bg-white/[0.05] hover:text-secondary"
             >
               {showPassword ? <EyeOffIcon /> : <EyeIcon />}
             </button>
@@ -134,6 +116,7 @@ export function LoginForm({
         </div>
 
         <Button
+          primary
           pending={pending}
           pendingLabel={signingUp ? "Creating account…" : "Signing in…"}
         >
@@ -141,31 +124,37 @@ export function LoginForm({
         </Button>
       </form>
 
-      <div className="my-5 flex items-center gap-3">
-        <span className="h-px flex-1 bg-border-subtle" />
-        <span className="text-[10.5px] tracking-[0.08em] text-muted uppercase">
-          or
-        </span>
-        <span className="h-px flex-1 bg-border-subtle" />
-      </div>
+      {/* The GitHub half of the panel is dropped entirely when the provider is
+          not configured. A permanently disabled button and the divider above
+          it were the loudest things on the screen while doing nothing. */}
+      {githubConfigured && (
+        <>
+          <div className="my-5 flex items-center gap-3">
+            <span className="h-px flex-1 bg-border-subtle" />
+            <span className="text-[10.5px] tracking-[0.08em] text-muted uppercase">
+              or
+            </span>
+            <span className="h-px flex-1 bg-border-subtle" />
+          </div>
 
-      <form action={githubAction}>
-        <Button
-          pending={false}
-          pendingLabel="Redirecting…"
-          disabled={!githubConfigured}
-          icon={<GitHubIcon />}
-        >
-          Continue with GitHub
-        </Button>
-      </form>
+          <form action={githubAction}>
+            <Button pending={false} pendingLabel="Redirecting…" icon={<GitHubIcon />}>
+              Continue with GitHub
+            </Button>
+          </form>
+        </>
+      )}
 
-      {!githubConfigured && (
-        <p className="mt-2.5 text-[11.5px] leading-relaxed text-muted">
-          GitHub sign-in needs{" "}
-          <code className="inline-code text-[11px]">AUTH_GITHUB_ID</code> and{" "}
-          <code className="inline-code text-[11px]">AUTH_GITHUB_SECRET</code> in{" "}
-          <code className="inline-code text-[11px]">.env</code>.
+      {signUpAllowed && !isFirstUser && (
+        <p className="mt-6 border-t border-border-subtle pt-5 text-center text-[12.5px] text-muted">
+          {signingUp ? "Already have an account?" : "No account yet?"}{" "}
+          <button
+            type="button"
+            onClick={() => setMode(signingUp ? "signin" : "signup")}
+            className="ease-base text-secondary underline decoration-white/15 underline-offset-[3px] transition-colors duration-200 hover:text-primary hover:decoration-white/40"
+          >
+            {signingUp ? "Sign in" : "Create one"}
+          </button>
         </p>
       )}
     </div>
@@ -177,19 +166,24 @@ function Button({
   pending,
   pendingLabel,
   icon,
-  disabled,
+  primary,
 }: {
   children: React.ReactNode;
   pending: boolean;
   pendingLabel: string;
   icon?: React.ReactNode;
-  disabled?: boolean;
+  /** The one action the panel is for, given a touch more presence. */
+  primary?: boolean;
 }) {
   return (
     <button
       type="submit"
-      disabled={pending || disabled}
-      className="ease-base flex h-10 w-full items-center justify-center gap-2 rounded-control border border-border-visible bg-white/[0.035] text-[13.5px] font-medium text-primary transition-[background-color,transform,color] duration-150 hover:bg-white/[0.065] active:translate-y-[1px] active:bg-white/[0.05] disabled:pointer-events-none disabled:text-muted disabled:opacity-60"
+      disabled={pending}
+      className={`ease-base flex h-11 w-full items-center justify-center gap-2 rounded-control border text-[13.5px] font-medium text-primary transition-[background-color,transform,border-color] duration-150 active:translate-y-[1px] disabled:pointer-events-none disabled:text-muted disabled:opacity-60 ${
+        primary
+          ? "border-white/[0.10] bg-white/[0.07] hover:border-white/[0.14] hover:bg-white/[0.10]"
+          : "border-border-visible bg-white/[0.025] hover:bg-white/[0.05]"
+      }`}
     >
       {pending ? (
         <>

@@ -97,8 +97,13 @@ export function MembersAdmin({
         >
           <span
             aria-hidden
-            className="ease-base absolute top-[2px] h-[16px] w-[16px] rounded-full bg-white/70 transition-[left] duration-200"
-            style={{ left: registrationOpen ? 18 : 2 }}
+            className="ease-base absolute top-[2px] h-[16px] w-[16px] rounded-full transition-[left,background-color] duration-200"
+            style={{
+              left: registrationOpen ? 18 : 2,
+              background: registrationOpen
+                ? "rgba(255,255,255,0.78)"
+                : "rgba(255,255,255,0.34)",
+            }}
           />
         </button>
       </div>
@@ -121,9 +126,18 @@ export function MembersAdmin({
             >
               <span
                 aria-hidden
-                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-border-visible bg-white/[0.03] text-[12px] font-medium text-tertiary"
+                className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full border border-border-visible bg-white/[0.03] text-[12px] font-medium text-tertiary"
               >
-                {initialOf(member)}
+                {member.image ? (
+                  /* eslint-disable-next-line @next/next/no-img-element */
+                  <img
+                    src={member.image}
+                    alt=""
+                    className="h-full w-full object-cover"
+                  />
+                ) : (
+                  initialOf(member)
+                )}
               </span>
 
               <div className="min-w-0 flex-1">

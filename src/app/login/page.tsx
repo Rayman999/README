@@ -35,14 +35,20 @@ export default async function LoginPage({
 
   let isFirstUser = false;
   let registrationClosed = false;
+  let workspaceName: string | null = null;
   try {
     const [{ value }] = await db.select({ value: count() }).from(users);
     isFirstUser = value === 0;
     const workspace = await getWorkspace();
     registrationClosed = Boolean(workspace && !workspace.registrationOpen);
+    workspaceName = workspace?.name ?? null;
   } catch {
     // Database unreachable — still render the form rather than erroring out.
   }
+
+  // "Workspace" is the placeholder name the bootstrap assigns, so naming it
+  // back at someone reads as a bug rather than as a greeting.
+  const named = workspaceName && workspaceName !== "Workspace";
 
   async function githubAction() {
     "use server";
@@ -51,12 +57,12 @@ export default async function LoginPage({
 
   return (
     <main className="flex min-h-screen flex-col items-center justify-center px-6 py-16">
-      <div className="w-full max-w-[380px]">
+      <div className="stagger w-full max-w-[392px]">
         <div className="flex flex-col items-center">
-          <span className="flex h-9 w-9 items-center justify-center rounded-[10px] border border-border-visible bg-white/[0.03] text-tertiary">
+          <span className="flex h-10 w-10 items-center justify-center rounded-[12px] border border-border-visible bg-white/[0.035] text-tertiary">
             <svg
-              width="16"
-              height="16"
+              width="17"
+              height="17"
               viewBox="0 0 16 16"
               fill="none"
               stroke="currentColor"
@@ -68,25 +74,27 @@ export default async function LoginPage({
               <path d="M9.5 1.5H4a1 1 0 0 0-1 1v11a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V5zM9.5 1.5V5H13" />
             </svg>
           </span>
-          <h1 className="mt-4 text-[19px] font-semibold text-heading">readme</h1>
+          <h1 className="mt-4 text-[20px] leading-tight font-semibold text-heading">
+            {named ? workspaceName : "readme"}
+          </h1>
           <p className="mt-1.5 text-center text-[13.5px] text-secondary">
-            {isFirstUser
-              ? "Nobody has signed in yet — you'll become the workspace owner."
-              : "Sign in to your documentation workspace."}
+            {named
+              ? "Documentation, written by agents and humans alike."
+              : "Your documentation workspace."}
           </p>
         </div>
 
         {errorMessage && (
           <div
             role="alert"
-            className="mt-6 rounded-code border border-border-subtle bg-white/[0.022] px-4 py-3 text-[13px] text-secondary"
+            className="mt-7 rounded-code border border-border-subtle bg-white/[0.022] px-4 py-3 text-[13px] leading-relaxed text-secondary"
             style={{ borderLeft: "2px solid #8A6A62" }}
           >
             {errorMessage}
           </div>
         )}
 
-        <div className="mt-6">
+        <div className="mt-7">
           <LoginForm
             githubAction={githubAction}
             githubConfigured={githubConfigured}
@@ -96,8 +104,22 @@ export default async function LoginPage({
         </div>
 
         {registrationClosed && !isFirstUser && (
-          <p className="mt-4 text-center text-[11.5px] text-muted">
-            Registration is closed. Existing members can still sign in.
+          <p className="mt-5 text-center text-[11.5px] leading-relaxed text-muted">
+            Sign-up is closed. Ask an owner for an account.
+          </p>
+        )}
+
+        {/* Configuration guidance belongs to whoever is running the app, not
+            to whoever is signing in — so it stops at the dev build. */}
+        {!githubConfigured && process.env.NODE_ENV !== "production" && (
+          <p className="mt-5 text-center text-[11px] leading-relaxed text-muted">
+            GitHub sign-in is hidden until{" "}
+            <code className="inline-code text-[10.5px]">AUTH_GITHUB_ID</code>{" "}
+            and{" "}
+            <code className="inline-code text-[10.5px]">
+              AUTH_GITHUB_SECRET
+            </code>{" "}
+            are set.
           </p>
         )}
       </div>

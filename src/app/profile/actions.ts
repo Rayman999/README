@@ -152,6 +152,48 @@ export async function changeOwnName(name: string): Promise<ActionResult> {
   return { ok: true };
 }
 
+// A profile picture is stored inline on the user row as a data URL rather than
+// on disk or in object storage. The container has no persistent volume, so a
+// file written to the filesystem would vanish on the next deploy; the browser
+// crops and re-encodes to 256x256 before upload, which keeps a picture in the
+// tens of kilobytes. The ceiling below is the backstop for anything that
+// arrives without having gone through that path.
+const MAX_AVATAR_BYTES = 400_000;
+const AVATAR_PREFIX = /^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/;
+
+export async function changeOwnAvatar(dataUrl: string): Promise<ActionResult> {
+  const session = await auth();
+  if (!session?.user?.id) return { ok: false, error: "You are not signed in." };
+
+  if (!AVATAR_PREFIX.test(dataUrl)) {
+    return { ok: false, error: "That is not a PNG, JPEG or WebP image." };
+  }
+  if (dataUrl.length > MAX_AVATAR_BYTES) {
+    return { ok: false, error: "That picture is too large. Try a smaller one." };
+  }
+
+  await db
+    .update(users)
+    .set({ image: dataUrl })
+    .where(eq(users.id, session.user.id));
+
+  revalidatePath("/profile");
+  return { ok: true };
+}
+
+export async function removeOwnAvatar(): Promise<ActionResult> {
+  const session = await auth();
+  if (!session?.user?.id) return { ok: false, error: "You are not signed in." };
+
+  await db
+    .update(users)
+    .set({ image: null })
+    .where(eq(users.id, session.user.id));
+
+  revalidatePath("/profile");
+  return { ok: true };
+}
+
 const passwordSchema = z
   .string()
   .min(8, "New password must be at least 8 characters.")
