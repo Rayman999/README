@@ -350,11 +350,94 @@ select option:disabled {
   background-clip: content-box;
 }
 
+/* ---------------------------------------------------------------------------
+ * Route transitions - theme.md motion tokens only (ease, 200-250ms).
+ *
+ * The hierarchy reads left to right: going deeper into a project the view
+ * swipes in from the right, coming back out it swipes in from the left. The
+ * travel is short (28px) and paired with a fade, so it registers as the page
+ * settling into place rather than as a slide show.
+ * ------------------------------------------------------------------------- */
+@keyframes route-in-forward {
+  from { opacity: 0; transform: translate3d(28px, 0, 0) scale(0.994); }
+  to   { opacity: 1; transform: none; }
+}
+@keyframes route-in-back {
+  from { opacity: 0; transform: translate3d(-28px, 0, 0) scale(0.994); }
+  to   { opacity: 1; transform: none; }
+}
+@keyframes route-out-forward {
+  from { opacity: 1; transform: none; }
+  to   { opacity: 0; transform: translate3d(-22px, 0, 0) scale(0.994); }
+}
+@keyframes route-out-back {
+  from { opacity: 1; transform: none; }
+  to   { opacity: 0; transform: translate3d(22px, 0, 0) scale(0.994); }
+}
+
+.route-transition {
+  /* No fill mode on the enter half, deliberately. A retained `transform`, even
+     an identity one, makes this wrapper the containing block for the fixed
+     header inside it - so once the animation is done the transform has to go
+     away entirely, not be held at its end value. */
+  animation: route-in-forward var(--dur-slow) var(--ease);
+}
+.route-transition[data-direction="back"] {
+  animation-name: route-in-back;
+}
+.route-transition[data-exiting] {
+  /* The exit does hold its end state: the view has to stay off-screen until
+     the router answers, however long that takes. */
+  animation: route-out-forward var(--dur-base) var(--ease) forwards;
+  pointer-events: none;
+}
+.route-transition[data-exiting][data-direction="back"] {
+  animation-name: route-out-back;
+}
+
+/* While the outgoing view is transformed it becomes the containing block for
+   anything fixed inside it, so the header would otherwise drop to the top of
+   the document. --exit-scroll is the scroll offset at the moment of the click.
+   Only the exit needs this: the incoming view is always rendered at scroll 0. */
+.route-transition[data-exiting] [data-fixed-chrome] {
+  top: var(--exit-scroll, 0px);
+}
+
+/* Content inside the incoming view arrives a beat after the view itself, in
+   source order. Applied to lists of cards and pages, not to body copy. */
+@keyframes rise-in {
+  from { opacity: 0; transform: translate3d(0, 8px, 0); }
+  to   { opacity: 1; transform: none; }
+}
+.stagger > * {
+  /* `backwards` holds the start state through the delay; nothing is held once
+     the animation finishes. */
+  animation: rise-in var(--dur-slow) var(--ease) backwards;
+}
+.stagger > *:nth-child(1)  { animation-delay: 60ms; }
+.stagger > *:nth-child(2)  { animation-delay: 100ms; }
+.stagger > *:nth-child(3)  { animation-delay: 140ms; }
+.stagger > *:nth-child(4)  { animation-delay: 180ms; }
+.stagger > *:nth-child(5)  { animation-delay: 220ms; }
+.stagger > *:nth-child(6)  { animation-delay: 260ms; }
+.stagger > *:nth-child(n + 7) { animation-delay: 300ms; }
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
   *::after {
     transition-duration: 0ms !important;
     animation-duration: 0ms !important;
+    animation-delay: 0ms !important;
+  }
+
+  /* No travel at all - the exit half would otherwise park the outgoing view
+     off-screen for as long as the router takes to answer. */
+  .route-transition,
+  .route-transition[data-exiting],
+  .stagger > * {
+    animation: none !important;
+    opacity: 1;
+    transform: none;
   }
 }

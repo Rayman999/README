@@ -88,7 +88,7 @@ export default async function Home() {
             )}
           </div>
         ) : (
-          <ul className="grid gap-3 sm:grid-cols-2">
+          <ul className="stagger grid gap-3 sm:grid-cols-2">
             {roots.map((project) => {
               const children = projects.filter(
                 (p) => p.parentId === project.id,
@@ -97,7 +97,7 @@ export default async function Home() {
                 <li key={project.id}>
                   <Link
                     href={`/p/${project.slug}`}
-                    className="ease-base block h-full rounded-code border border-border-subtle bg-white/[0.018] p-4 transition-[background-color,transform] duration-150 hover:bg-white/[0.035] active:translate-y-[1px]"
+                    className="ease-base block h-full rounded-code border border-border-subtle bg-white/[0.018] p-4 transition-[background-color,transform] duration-200 hover:-translate-y-[2px] hover:bg-white/[0.035] active:translate-y-0"
                   >
                     <div className="flex items-baseline justify-between gap-3">
                       <span className="text-[14px] font-medium text-primary">

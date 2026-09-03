@@ -18,6 +18,10 @@ export function Header({
 }) {
   return (
     <header
+      // The route transition transforms an ancestor of this header while a
+      // page is leaving, which makes `fixed` resolve against that ancestor
+      // instead of the viewport. globals.css compensates via this attribute.
+      data-fixed-chrome
       className="fixed top-0 right-0 left-0 z-30 flex items-center gap-4 border-b border-border-faint bg-shell px-4"
       style={{ height: HEADER_H }}
     >

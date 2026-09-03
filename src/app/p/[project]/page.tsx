@@ -235,7 +235,7 @@ export default async function ProjectPage({
             <SectionHeading id="pages">Pages</SectionHeading>
 
             {pageCount > 0 ? (
-              <div className="mt-4 space-y-6">
+              <div className="stagger mt-4 space-y-6">
                 {tree.sections
                   .filter((s) => s.pages.length > 0)
                   .map((section) => (
