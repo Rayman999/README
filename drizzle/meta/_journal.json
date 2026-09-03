@@ -22,6 +22,13 @@
       "when": 1788289218057,
       "tag": "0002_natural_pandemic",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1788463371246,
+      "tag": "0003_handy_kitty_pryde",
+      "breakpoints": true
     }
   ]
 }

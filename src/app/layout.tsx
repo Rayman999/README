@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
+import "@/components/documents/documents.css";
 import { RouteTransition } from "@/components/shell/RouteTransition";
 
 const inter = Inter({

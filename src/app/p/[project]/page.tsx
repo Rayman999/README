@@ -3,6 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { auth, signOut } from "@/auth";
 import { getWorkspace } from "@/lib/workspace";
 import { getProjectBySlug, getProjectTree } from "@/lib/projects";
+import { canWrite } from "@/lib/api/context";
 import { AppShell } from "@/components/shell/AppShell";
 import { Icon, ICONS } from "@/components/shell/icons";
 import type { NavSection, TocEntry } from "@/components/shell/types";
@@ -72,6 +73,11 @@ export default async function ProjectPage({
   const pageCount =
     tree.sections.reduce((n, s) => n + s.pages.length, 0) +
     tree.loosePages.length;
+
+  if (tree.loosePages.length > 0) navSections.push({
+    slug: "unsectioned", title: "Pages",
+    pages: tree.loosePages.map((page) => ({ slug: page.slug, title: page.title, href: `${projectHref}/${page.slug}` })),
+  });
 
   const toc: TocEntry[] = [
     { id: "overview", text: "Overview", level: 2 },
@@ -232,10 +238,11 @@ export default async function ProjectPage({
           </div>
 
           <div className="mt-9">
-            <SectionHeading id="pages">Pages</SectionHeading>
+            <div className="flex flex-wrap items-center justify-between gap-3"><SectionHeading id="pages">Pages</SectionHeading>{canWrite(session.user.role) && <Link href={`/compose/${project.slug}`} className="rounded-control border border-border-visible px-3 py-2 text-[13px] text-primary hover:bg-state-hover">Create document</Link>}</div>
 
             {pageCount > 0 ? (
               <div className="stagger mt-4 space-y-6">
+                {tree.loosePages.length > 0 && <ul className="space-y-2">{tree.loosePages.map((page) => <li key={page.id}><Link href={`${projectHref}/${page.slug}`} className="flex items-baseline gap-3 rounded-control px-2 py-1.5 hover:bg-state-hover"><span className="text-[14px] text-primary">{page.title}</span><span className="truncate text-[12.5px] text-muted">{page.description}</span></Link></li>)}</ul>}
                 {tree.sections
                   .filter((s) => s.pages.length > 0)
                   .map((section) => (
@@ -272,8 +279,8 @@ export default async function ProjectPage({
                   No pages yet
                 </p>
                 <p className="mx-auto mt-1.5 max-w-[380px] text-[13px] leading-relaxed text-secondary">
-                  Documentation pages are written in markdown and grouped into
-                  sections. They will appear here and in the sidebar.
+                  Create a structured document with themed cards, charts, and
+                  tables. Existing Markdown pages continue to work.
                 </p>
               </div>
             )}

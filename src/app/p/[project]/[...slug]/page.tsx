@@ -10,6 +10,9 @@ import {
   getSectionById,
 } from "@/lib/projects";
 import { renderMarkdown } from "@/lib/markdown/render";
+import { documentHeadings } from "@/lib/documents/schema";
+import { DocumentRenderer } from "@/components/documents/DocumentRenderer";
+import { canWrite } from "@/lib/api/context";
 import { AppShell } from "@/components/shell/AppShell";
 import type { NavSection, TocEntry } from "@/components/shell/types";
 
@@ -71,7 +74,7 @@ export default async function DocPage({
 
   const [tree, { html, headings }, neighbours] = await Promise.all([
     getProjectTree(project.id),
-    renderMarkdown(page.body),
+    page.document ? Promise.resolve({ html: "", headings: documentHeadings(page.document) }) : renderMarkdown(page.body),
     getPageNeighbours(project.id, page.id),
   ]);
 
@@ -90,6 +93,11 @@ export default async function DocPage({
     text: h.text,
     level: h.level,
   }));
+
+  if (tree.loosePages.length > 0) navSections.push({
+    slug: "unsectioned", title: "Pages",
+    pages: tree.loosePages.map((p) => ({ slug: p.slug, title: p.title, href: `${projectHref}/${p.slug}` })),
+  });
 
   async function signOutAction() {
     "use server";
@@ -152,7 +160,8 @@ export default async function DocPage({
 
         <hr className="my-9 border-0 border-t border-border-subtle" />
 
-        <div className="doc-body" dangerouslySetInnerHTML={{ __html: html }} />
+        {canWrite(session.user.role) && page.document && <Link href={`/compose/${project.slug}?page=${page.slug}`} className="mb-6 inline-block text-[13px] text-primary underline underline-offset-4">Edit document</Link>}
+        {page.document ? <DocumentRenderer document={page.document} /> : <div className="doc-body" dangerouslySetInnerHTML={{ __html: html }} />}
 
         {(neighbours.previous || neighbours.next) && (
           <div className="mt-12 grid grid-cols-1 gap-3 border-t border-border-subtle pt-8 sm:grid-cols-2">

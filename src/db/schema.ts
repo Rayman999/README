@@ -1,4 +1,5 @@
 import { sql } from "drizzle-orm";
+import type { ReadmeDocument } from "@/lib/documents/schema";
 import {
   type AnyPgColumn,
   boolean,
@@ -193,7 +194,9 @@ export const pages = pgTable(
     slug: text("slug").notNull(),
     title: text("title").notNull(),
     description: text("description").notNull(),
-    body: text("body").notNull(), // markdown source, stored verbatim
+    body: text("body").notNull(), // legacy Markdown or derived structured-document search text
+    document: jsonb("document").$type<ReadmeDocument>(),
+    version: integer("version").notNull().default(1),
     status: text("status", { enum: ["draft", "stable", "deprecated"] })
       .notNull()
       .default("draft"),
@@ -231,6 +234,7 @@ export const pageRevisions = pgTable(
       .notNull()
       .references(() => pages.id, { onDelete: "cascade" }),
     body: text("body").notNull(),
+    document: jsonb("document").$type<ReadmeDocument>(),
     title: text("title").notNull(),
     authorId: uuid("author_id").references(() => users.id, {
       onDelete: "set null",

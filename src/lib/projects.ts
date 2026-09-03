@@ -1,6 +1,7 @@
 import { and, asc, eq, isNull, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { pageRevisions, pages, projects, sections } from "@/db/schema";
+import { documentSchema, documentText, type ReadmeDocument } from "./documents/schema";
 
 export { slugify } from "./slug";
 
@@ -35,11 +36,7 @@ export async function getProjectTree(projectId: string) {
       .from(sections)
       .where(eq(sections.projectId, projectId))
       .orderBy(asc(sections.position)),
-    db
-      .select()
-      .from(pages)
-      .where(and(eq(pages.projectId, projectId), isNull(pages.deletedAt)))
-      .orderBy(asc(pages.position)),
+    listPageMetadata(projectId),
   ]);
 
   return {
@@ -141,6 +138,7 @@ export async function listPageMetadata(projectId: string) {
       tags: pages.tags,
       authorType: pages.authorType,
       updatedAt: pages.updatedAt,
+      version: pages.version,
     })
     .from(pages)
     .where(and(eq(pages.projectId, projectId), isNull(pages.deletedAt)))
@@ -188,6 +186,7 @@ export async function createPage(input: {
   title: string;
   description: string;
   body: string;
+  document?: ReadmeDocument;
   status?: "draft" | "stable" | "deprecated";
   tags?: string[];
   extendsPageId?: string | null;
@@ -198,7 +197,9 @@ export async function createPage(input: {
     .from(pages)
     .where(eq(pages.projectId, input.projectId));
 
-  const [row] = await db
+  const document = input.document ? documentSchema.parse(input.document) : null;
+  return db.transaction(async (tx) => {
+  const [row] = await tx
     .insert(pages)
     .values({
       projectId: input.projectId,
@@ -206,7 +207,8 @@ export async function createPage(input: {
       slug: input.slug,
       title: input.title,
       description: input.description,
-      body: input.body,
+      body: document ? documentText(document) : input.body,
+      document,
       status: input.status ?? "draft",
       position: count,
       tags: input.tags ?? [],
@@ -217,14 +219,16 @@ export async function createPage(input: {
 
   // Revisions are append-only (BUILD.md §4) — write one on every write,
   // including creation, so a page's full history is always in one table.
-  await db.insert(pageRevisions).values({
+  await tx.insert(pageRevisions).values({
     pageId: row.id,
     title: row.title,
     body: row.body,
+    document: row.document,
     authorType: input.authorType,
   });
 
   return row;
+  });
 }
 
 export async function updatePage(
@@ -233,6 +237,7 @@ export async function updatePage(
     title: string;
     description: string;
     body: string;
+    document: ReadmeDocument;
     status: "draft" | "stable" | "deprecated";
     sectionId: string | null;
     position: number;
@@ -240,23 +245,28 @@ export async function updatePage(
     extendsPageId: string | null;
   }>,
   authorType: "human" | "agent",
+  expectedVersion?: number,
 ) {
-  const [row] = await db
+  const document = patch.document ? documentSchema.parse(patch.document) : undefined;
+  return db.transaction(async (tx) => {
+  const [row] = await tx
     .update(pages)
-    .set({ ...patch, updatedAt: new Date() })
-    .where(eq(pages.id, id))
+    .set({ ...patch, ...(document ? { document, body: documentText(document) } : {}), authorType, version: sql`${pages.version} + 1`, updatedAt: new Date() })
+    .where(and(eq(pages.id, id), isNull(pages.deletedAt), expectedVersion === undefined ? undefined : eq(pages.version, expectedVersion)))
     .returning();
 
-  if (row && (patch.body !== undefined || patch.title !== undefined)) {
-    await db.insert(pageRevisions).values({
+  if (row && (patch.body !== undefined || patch.title !== undefined || document)) {
+    await tx.insert(pageRevisions).values({
       pageId: row.id,
       title: row.title,
       body: row.body,
+      document: row.document,
       authorType,
     });
   }
 
   return row;
+  });
 }
 
 export async function softDeletePage(id: string) {

@@ -16,4 +16,4 @@ if (process.env.NODE_ENV !== "production") {
 }
 
 export const db: NodePgDatabase<typeof schema> = drizzle(pool, { schema });
-export { schema };
+export { schema, pool };

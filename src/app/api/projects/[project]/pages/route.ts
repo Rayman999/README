@@ -9,16 +9,19 @@ import {
   listPageMetadata,
 } from "@/lib/projects";
 import { slugify } from "@/lib/slug";
+import { documentSchema } from "@/lib/documents/schema";
+import { readJson } from "@/lib/api/read-json";
 
-const createSchema = z.object({
+const createSchema = z.strictObject({
   title: z.string().trim().min(1).max(200),
   description: z.string().trim().min(1).max(300),
-  body: z.string(), // raw markdown, stored verbatim (BUILD.md §2/§6)
+  body: z.string().max(200000).optional(), // legacy Markdown
+  document: documentSchema.optional(),
   slug: z.string().trim().min(1).max(96).optional(),
   section: z.string().trim().min(1).max(96).nullish(),
   status: z.enum(["draft", "stable", "deprecated"]).optional(),
-  tags: z.array(z.string()).optional(),
-});
+  tags: z.array(z.string().max(80)).max(20).optional(),
+}).refine((data) => (data.body !== undefined) !== (data.document !== undefined), { message: "Supply exactly one of body (legacy Markdown) or document (structured content)." });
 
 export async function GET(
   _req: Request,
@@ -55,7 +58,8 @@ export async function POST(
   const project = await getProjectBySlug(workspace.id, projectSlug);
   if (!project) return notFound(`No project with slug "${projectSlug}".`);
 
-  const json = await req.json().catch(() => null);
+  let json: unknown;
+  try { json = await readJson(req); } catch { return badRequest("Invalid JSON or request exceeds 320 KiB."); }
   const parsed = createSchema.safeParse(json);
   if (!parsed.success) {
     return badRequest("The request body did not match the expected shape.", {
@@ -87,7 +91,8 @@ export async function POST(
     slug,
     title: data.title,
     description: data.description,
-    body: data.body,
+    body: data.body ?? "",
+    document: data.document,
     status: data.status,
     tags: data.tags,
     authorType: "human",

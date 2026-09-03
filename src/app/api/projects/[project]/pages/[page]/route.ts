@@ -1,6 +1,8 @@
 import { z } from "zod";
 import { canWrite, requireSession, requireWorkspace } from "@/lib/api/context";
-import { badRequest, notFound, unauthorized } from "@/lib/api/problem";
+import { badRequest, conflict, notFound, unauthorized } from "@/lib/api/problem";
+import { documentContext, documentSchema } from "@/lib/documents/schema";
+import { readJson } from "@/lib/api/read-json";
 import {
   getPageBySlug,
   getProjectBySlug,
@@ -9,14 +11,16 @@ import {
   updatePage,
 } from "@/lib/projects";
 
-const patchSchema = z.object({
+const patchSchema = z.strictObject({
   title: z.string().trim().min(1).max(200).optional(),
   description: z.string().trim().min(1).max(300).optional(),
-  body: z.string().optional(), // raw markdown, no transformation on write
+  body: z.string().max(200000).optional(), // legacy Markdown
+  document: documentSchema.optional(),
+  expectedVersion: z.number().int().min(1).optional(),
   section: z.string().trim().min(1).max(96).nullish(),
   status: z.enum(["draft", "stable", "deprecated"]).optional(),
-  tags: z.array(z.string()).optional(),
-});
+  tags: z.array(z.string().max(80)).max(20).optional(),
+}).refine((data) => !(data.body !== undefined && data.document !== undefined), { message: "Supply body or document, not both." });
 
 async function resolve(projectSlug: string, pageSlug: string) {
   const workspace = await requireWorkspace();
@@ -36,7 +40,7 @@ async function resolve(projectSlug: string, pageSlug: string) {
 }
 
 export async function GET(
-  _req: Request,
+  req: Request,
   { params }: { params: Promise<{ project: string; page: string }> },
 ) {
   const session = await requireSession();
@@ -46,7 +50,11 @@ export async function GET(
   const resolved = await resolve(projectSlug, pageSlug);
   if ("error" in resolved) return resolved.error;
 
-  return Response.json({ page: resolved.page });
+  if (new URL(req.url).searchParams.get("view") === "context") {
+    const page = resolved.page;
+    return Response.json({ page: { slug: page.slug, title: page.title, description: page.description, version: page.version, updatedAt: page.updatedAt, context: page.document ? documentContext(page.document) : null } }, { headers: { "Cache-Control": "private, no-store" } });
+  }
+  return Response.json({ page: resolved.page }, { headers: { "Cache-Control": "private, no-store" } });
 }
 
 export async function PATCH(
@@ -64,7 +72,8 @@ export async function PATCH(
   if ("error" in resolved) return resolved.error;
   const { project, page } = resolved;
 
-  const json = await req.json().catch(() => null);
+  let json: unknown;
+  try { json = await readJson(req); } catch { return badRequest("Invalid JSON or request exceeds 320 KiB."); }
   const parsed = patchSchema.safeParse(json);
   if (!parsed.success) {
     return badRequest("The request body did not match the expected shape.", {
@@ -72,6 +81,8 @@ export async function PATCH(
     });
   }
   const data = parsed.data;
+  if (page.document && data.body !== undefined) return badRequest("This is a structured page. Update document instead of body.");
+  if ((page.document || data.document) && data.expectedVersion === undefined) return badRequest("Structured updates require expectedVersion from the latest page response.");
 
   let sectionId: string | null | undefined = undefined;
   if (data.section !== undefined) {
@@ -92,12 +103,16 @@ export async function PATCH(
       title: data.title,
       description: data.description,
       body: data.body,
+      document: data.document,
       status: data.status,
       tags: data.tags,
       sectionId,
     },
     "human",
+    data.expectedVersion,
   );
+
+  if (!updated) return conflict("Page changed since it was read. Fetch the latest version before editing.");
 
   return Response.json({ page: updated });
 }
