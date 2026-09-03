@@ -9,6 +9,7 @@
     "lint": "eslint",
     "test:documents": "tsx --test tests/documents.test.ts",
     "test:documents:db": "tsx --test tests/documents-db.test.ts",
+    "test:pages:db": "tsx --test tests/pages-crud-db.test.ts",
     "test:mcp": "tsx --test tests/mcp.test.ts",
     "test:mcp:db": "tsx --test tests/mcp-db.test.ts",
     "test:mcp:codex:db": "tsx --test tests/mcp-codex-db.test.ts",

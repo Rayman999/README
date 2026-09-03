@@ -15,6 +15,29 @@ const chart = z.strictObject({
   data: z.array(z.strictObject({ label: short, value: z.number().min(0).max(1e12) })).min(1).max(40),
 });
 
+// A node-and-edge flow, rendered by README as real SVG. This exists so that an
+// agent describing how something works has somewhere structured to put it --
+// without it, the only block that accepts a picture-shaped thing is `code`, and
+// agents fall back to drawing boxes out of dashes and pipes.
+const diagram = z.strictObject({
+  type: z.literal("diagram"),
+  title: short,
+  direction: z.enum(["down", "right"]).default("down"),
+  nodes: z.array(z.strictObject({
+    id: z.string().regex(/^[A-Za-z0-9][A-Za-z0-9_-]{0,39}$/),
+    // Bounded to what a node box can hold at a readable size. A diagram is a
+    // map, not prose: anything longer belongs in a paragraph beside it.
+    label: z.string().trim().min(1).max(40),
+    detail: z.string().trim().max(90).optional(),
+    role: z.enum(["default", "actor", "system", "store", "decision"]).default("default"),
+  })).min(2).max(12),
+  edges: z.array(z.strictObject({
+    from: z.string().max(40),
+    to: z.string().max(40),
+    label: z.string().trim().max(60).optional(),
+  })).min(1).max(24),
+});
+
 export const blockSchema = z.discriminatedUnion("type", [
   z.strictObject({ type: z.literal("heading"), text: short, level: z.union([z.literal(2), z.literal(3)]) }),
   z.strictObject({ type: z.literal("paragraph"), text }),
@@ -27,6 +50,7 @@ export const blockSchema = z.discriminatedUnion("type", [
   z.strictObject({ type: z.literal("timeline"), items: z.array(z.strictObject({ title: short, text })).min(1).max(20) }),
   z.strictObject({ type: z.literal("details"), title: short, text }),
   chart,
+  diagram,
 ]);
 
 export const documentSchema = z.strictObject({
@@ -42,6 +66,15 @@ export const documentSchema = z.strictObject({
     ctx.addIssue({ code: "custom", message: "Document exceeds the 256 KiB limit." });
   }
   doc.blocks.forEach((block, index) => {
+    if (block.type === "diagram") {
+      const ids = new Set(block.nodes.map((node) => node.id));
+      if (ids.size !== block.nodes.length) ctx.addIssue({ code: "custom", path: ["blocks", index, "nodes"], message: "Diagram node ids must be unique." });
+      block.edges.forEach((edge, edgeIndex) => {
+        for (const end of ["from", "to"] as const) {
+          if (!ids.has(edge[end])) ctx.addIssue({ code: "custom", path: ["blocks", index, "edges", edgeIndex, end], message: `Edge ${end} "${edge[end]}" is not a node id in this diagram.` });
+        }
+      });
+    }
     if (block.type === "table") {
       block.rows.forEach((row, rowIndex) => {
         if (row.length !== block.columns.length) ctx.addIssue({ code: "custom", path: ["blocks", index, "rows", rowIndex], message: "Each row must match the number of columns." });
@@ -67,6 +100,7 @@ export function documentText(doc: ReadmeDocument): string {
       case "cards": case "timeline": block.items.forEach((item) => pieces.push(item.title, item.text)); break;
       case "metrics": block.items.forEach((item) => pieces.push(item.label, item.value, item.detail ?? "")); break;
       case "chart": pieces.push(block.title, block.unit ?? "", ...block.data.map((item) => `${item.label}: ${item.value}`)); break;
+      case "diagram": pieces.push(block.title, ...block.nodes.map((node) => [node.label, node.detail ?? ""].join(" ")), ...block.edges.map((edge) => edge.label ?? "")); break;
     }
   }
   return pieces.join("\n");
@@ -94,6 +128,15 @@ export const starterDocument: ReadmeDocument = {
     { type: "callout", tone: "note", title: "Start with verified facts", text: "Record decisions and assumptions separately. Do not invent measurements or present example data as real results." },
     { type: "heading", text: "Example chart", level: 2 },
     { type: "chart", variant: "bar", title: "Illustrative data — not project metrics", unit: "examples", data: [{ label: "Overview", value: 4 }, { label: "Guides", value: 7 }, { label: "Reference", value: 5 }] },
+    { type: "heading", text: "How a request flows", level: 2 },
+    { type: "diagram", title: "Example flow - replace with the real one", direction: "down", nodes: [
+      { id: "user", label: "Person", detail: "Asks for something", role: "actor" },
+      { id: "app", label: "This component", detail: "Validates and routes", role: "system" },
+      { id: "store", label: "Database", role: "store" },
+    ], edges: [
+      { from: "user", to: "app", label: "request" },
+      { from: "app", to: "store", label: "reads / writes" },
+    ] },
     { type: "details", title: "Implementation notes", text: "Add constraints and details a future contributor should know." },
   ],
 };

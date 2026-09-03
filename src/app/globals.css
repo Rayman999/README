@@ -387,6 +387,18 @@ select option:disabled {
 .route-transition[data-direction="back"] {
   animation-name: route-in-back;
 }
+
+/* A sideways move - page to page within one project - is not a change of depth,
+   and sliding the whole view for it implies a journey the reader did not make.
+   The shell holds completely still; only the document panel settles, using the
+   same rise the staggered lists use. Nothing here transforms the wrapper, so
+   the fixed header is never reparented in the first place. */
+.route-transition[data-direction="lateral"] {
+  animation: none;
+}
+.route-transition[data-direction="lateral"] .doc-panel {
+  animation: rise-in var(--dur-base) var(--ease);
+}
 /* While the wrapper is mid-animation it is the containing block for anything
    fixed inside it, so the header would otherwise drop to the top of the
    document. --nav-scroll is the scroll offset when the view mounted; it is 0
@@ -425,6 +437,7 @@ select option:disabled {
   }
 
   .route-transition,
+  .route-transition .doc-panel,
   .stagger > * {
     animation: none !important;
     opacity: 1;

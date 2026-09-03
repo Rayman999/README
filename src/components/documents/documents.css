@@ -48,4 +48,41 @@
 .rd-chart-range { text-align: center; font-size: 12px; }
 .rd-chart-data { margin-top: 18px; }
 .rd-chart-data .rd-table-scroll { margin-top: 12px; }
-@media (max-width: 480px) { .rd-chart, .rd-card, .rd-callout, .rd-details { padding: 14px; } .rd-bar-row { gap: 8px; } }
+/* Heading anchors. Hidden until the heading is hovered or the link itself is
+   focused, so they never compete with the text, but they stay reachable by
+   keyboard. Inline rather than in the margin: a negative offset clips on
+   narrow screens. */
+.rd-anchor { margin-left: 10px; font-weight: 400; color: var(--text-muted); text-decoration: none; opacity: 0; transition: opacity var(--dur-base) var(--ease), color var(--dur-base) var(--ease); }
+.readme-document h2:hover .rd-anchor, .readme-document h3:hover .rd-anchor, .rd-anchor:focus-visible { opacity: 1; }
+.rd-anchor:hover { color: var(--text-secondary); }
+@media (hover: none) { .rd-anchor { opacity: 0.4; } }
+
+/* Diagrams. Same raised-panel treatment as charts, drawn entirely from theme
+   tokens so a flow reads as part of the page rather than as pasted-in artwork. */
+.rd-diagram { border: 1px solid var(--border-subtle); border-radius: var(--radius-code); background: var(--surface-inset); padding: 20px; }
+.rd-diagram figcaption { font-weight: 550; color: var(--text-primary); }
+.rd-diagram-scroll { margin-top: 18px; overflow-x: auto; }
+/* Deliberately not max-width:100%. Scaling a wide flow down to the column
+   width shrinks its labels past legibility; scrolling keeps them readable, and
+   the region is focusable with a text description underneath. */
+.rd-diagram-svg { display: block; margin: 0 auto; overflow: visible; }
+
+.rd-diagram-edge { fill: none; stroke: var(--border-visible); stroke-width: 1.5; }
+.rd-diagram-head { fill: var(--text-muted); }
+.rd-diagram-label-bg { fill: var(--surface-inset); }
+.rd-diagram-label { fill: var(--text-muted); font-size: 10.5px; font-family: var(--font-sans); }
+
+.rd-diagram-node rect { fill: var(--surface-raised); stroke: var(--border-visible); stroke-width: 1; }
+.rd-diagram-title { fill: var(--text-primary); font-size: 13px; font-weight: 550; font-family: var(--font-sans); }
+.rd-diagram-detail { fill: var(--text-muted); font-size: 11px; font-family: var(--font-sans); }
+
+/* Roles are distinguished by a quiet border tint, not by colour blocks - the
+   palette here is deliberately narrow. */
+.rd-role-actor rect { stroke: var(--syn-function); }
+.rd-role-system rect { stroke: var(--syn-keyword); }
+.rd-role-store rect { stroke: var(--syn-string); }
+.rd-role-decision rect { stroke: var(--syn-number); stroke-dasharray: 4 3; }
+
+.rd-diagram-scroll:focus-visible { outline: 2px solid var(--text-secondary); outline-offset: 4px; }
+
+@media (max-width: 480px) { .rd-chart, .rd-card, .rd-callout, .rd-details, .rd-diagram { padding: 14px; } .rd-bar-row { gap: 8px; } }

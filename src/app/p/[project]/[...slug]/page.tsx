@@ -12,6 +12,7 @@ import {
 import { renderMarkdown } from "@/lib/markdown/render";
 import { documentHeadings } from "@/lib/documents/schema";
 import { DocumentRenderer } from "@/components/documents/DocumentRenderer";
+import { PageActions } from "@/components/documents/PageActions";
 import { canWrite } from "@/lib/api/context";
 import { AppShell } from "@/components/shell/AppShell";
 import type { NavSection, TocEntry } from "@/components/shell/types";
@@ -148,9 +149,17 @@ export default async function DocPage({
           <h1 className="text-[32px] leading-[1.15] font-semibold text-heading">
             {page.title}
           </h1>
-          <div className="mt-1.5 flex items-center gap-2">
-            <Badge>{STATUS_LABEL[page.status] ?? page.status}</Badge>
-            {page.authorType === "agent" && <Badge>Written by an agent</Badge>}
+          <div className="mt-1.5 flex flex-col items-end gap-1.5">
+            <div className="flex items-center gap-2">
+              <Badge>{STATUS_LABEL[page.status] ?? page.status}</Badge>
+              {page.authorType === "agent" && <Badge>Written by an agent</Badge>}
+            </div>
+            {/* How current a page is is the first thing a reader needs to know
+                about documentation, and it was the one thing the header did
+                not say. */}
+            <time dateTime={page.updatedAt.toISOString()} className="text-[11.5px] whitespace-nowrap text-muted">
+              Updated {page.updatedAt.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
+            </time>
           </div>
         </div>
 
@@ -160,7 +169,7 @@ export default async function DocPage({
 
         <hr className="my-9 border-0 border-t border-border-subtle" />
 
-        {canWrite(session.user.role) && page.document && <Link href={`/compose/${project.slug}?page=${page.slug}`} className="mb-6 inline-block text-[13px] text-primary underline underline-offset-4">Edit document</Link>}
+        {canWrite(session.user.role) && <PageActions project={project.slug} page={page.slug} status={page.status} version={page.version} editable={Boolean(page.document)} projectHref={projectHref} />}
         {page.document ? <DocumentRenderer document={page.document} /> : <div className="doc-body" dangerouslySetInnerHTML={{ __html: html }} />}
 
         {(neighbours.previous || neighbours.next) && (

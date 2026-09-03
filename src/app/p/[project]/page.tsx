@@ -6,6 +6,7 @@ import { getProjectBySlug, getProjectTree } from "@/lib/projects";
 import { canWrite } from "@/lib/api/context";
 import { AppShell } from "@/components/shell/AppShell";
 import { Icon, ICONS } from "@/components/shell/icons";
+import { SectionManager } from "@/components/documents/SectionManager";
 import type { NavSection, TocEntry } from "@/components/shell/types";
 
 export const dynamic = "force-dynamic";
@@ -239,6 +240,7 @@ export default async function ProjectPage({
 
           <div className="mt-9">
             <div className="flex flex-wrap items-center justify-between gap-3"><SectionHeading id="pages">Pages</SectionHeading>{canWrite(session.user.role) && <Link href={`/compose/${project.slug}`} className="rounded-control border border-border-visible px-3 py-2 text-[13px] text-primary hover:bg-state-hover">Create document</Link>}</div>
+            {canWrite(session.user.role) && <SectionManager project={project.slug} sections={tree.sections.map((entry) => ({ id: entry.id, slug: entry.slug, title: entry.title, position: entry.position, pageCount: entry.pages.length }))} />}
 
             {pageCount > 0 ? (
               <div className="stagger mt-4 space-y-6">

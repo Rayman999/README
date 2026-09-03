@@ -46,6 +46,8 @@ Connections do not grant access to previous conversations or repository files.
 - `search_docs`: PostgreSQL full-text search within the authorized workspace.
 - `read_document`: compact context by default; explicit full-content mode.
 - `get_document_schema`: strict structured document schema and example.
+  Includes `diagram` (node-and-edge flows, rendered as real SVG) and `chart`
+  blocks, so an agent never needs to draw a picture out of characters.
 - `create_document`: new structured draft, with revision attribution.
 - `update_document`: structured drafts only, requiring the current version.
 

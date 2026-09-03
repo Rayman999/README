@@ -16,7 +16,7 @@ import { useLayoutEffect, useRef, useState, type ReactNode } from "react";
  * these force-dynamic routes that reads as the app blinking dark and back.
  */
 
-type Direction = "forward" | "back";
+type Direction = "forward" | "back" | "lateral";
 
 /** Depth in the documentation hierarchy. Deeper = further "in". */
 function depthOf(pathname: string): number {
@@ -39,7 +39,12 @@ export function RouteTransition({ children }: { children: ReactNode }) {
   if (settledPath.current !== pathname) {
     const previous = settledPath.current;
     settledPath.current = pathname;
-    setDirection(depthOf(pathname) >= depthOf(previous) ? "forward" : "back");
+    const from = depthOf(previous);
+    const to = depthOf(pathname);
+    // Same depth is a sideways move - page to page inside one project - not a
+    // change of hierarchy. Sliding for it would say something untrue about
+    // where the reader has gone, so it gets its own treatment in CSS.
+    setDirection(to === from ? "lateral" : to > from ? "forward" : "back");
   }
 
   // The wrapper is transformed while the animation runs, which makes it the
@@ -59,7 +64,10 @@ export function RouteTransition({ children }: { children: ReactNode }) {
     <div
       key={pathname}
       data-direction={direction}
-      data-animating={animating ? "" : undefined}
+      // A lateral move does not transform the wrapper, so the fixed-header
+      // compensation must not be applied for it - there is no containing block
+      // to correct, and the offset would push the header down the page.
+      data-animating={animating && direction !== "lateral" ? "" : undefined}
       onAnimationEnd={(event) => {
         // Ignore animations bubbling up from the staggered children.
         if (event.target === event.currentTarget) setAnimating(false);

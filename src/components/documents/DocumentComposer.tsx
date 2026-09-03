@@ -7,10 +7,13 @@ import { DocumentRenderer } from "./DocumentRenderer";
 
 const inputClass = "w-full rounded-input border border-border-visible bg-inset px-3 py-2 text-sm text-primary focus-visible:outline-2 focus-visible:outline-secondary";
 
-export function DocumentComposer({ project, initial }: { project: string; initial?: { slug: string; title: string; description: string; status: string; document: ReadmeDocument; version: number; href: string } }) {
+export function DocumentComposer({ project, sections, initial }: { project: string; sections: { slug: string; title: string }[]; initial?: { slug: string; title: string; description: string; status: string; document: ReadmeDocument; version: number; section: string; href: string } }) {
   const router = useRouter();
   const [title, setTitle] = useState(initial?.title ?? "");
   const [description, setDescription] = useState(initial?.description ?? "");
+  // "" means the page sits at the top level. The API takes null for that, so
+  // the empty option is translated on the way out rather than being sent.
+  const [section, setSection] = useState(initial?.section ?? "");
   const [source, setSource] = useState(JSON.stringify(initial?.document ?? starterDocument, null, 2));
   const [preview, setPreview] = useState<ReadmeDocument>(initial?.document ?? starterDocument);
   const [previewSource, setPreviewSource] = useState(source);
@@ -36,7 +39,7 @@ export function DocumentComposer({ project, initial }: { project: string; initia
       const document = validate();
       const response = await fetch(`/api/projects/${encodeURIComponent(project)}/pages${initial ? `/${encodeURIComponent(initial.slug)}` : ""}`, {
         method: initial ? "PATCH" : "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title, description, document, status: "draft", ...(initial ? { expectedVersion: initial.version } : {}) }),
+        body: JSON.stringify({ title, description, document, status: "draft", section: section || null, ...(initial ? { expectedVersion: initial.version } : {}) }),
       });
       const data = await response.json();
       if (!response.ok) {
@@ -52,6 +55,7 @@ export function DocumentComposer({ project, initial }: { project: string; initia
     <form onSubmit={save} className="auth-panel min-w-0 space-y-5 p-5 sm:p-6">
       <div><label htmlFor="document-title" className="mb-2 block text-xs text-secondary">Title</label><input id="document-title" required maxLength={200} value={title} onChange={(event) => setTitle(event.target.value)} className={inputClass} placeholder="Authentication architecture" /></div>
       <div><label htmlFor="document-description" className="mb-2 block text-xs text-secondary">Short description</label><input id="document-description" required maxLength={300} value={description} onChange={(event) => setDescription(event.target.value)} className={inputClass} placeholder="What this page helps someone understand" /></div>
+      <div><label htmlFor="document-section" className="mb-2 block text-xs text-secondary">Section</label><select id="document-section" value={section} onChange={(event) => setSection(event.target.value)} className={inputClass}><option value="">No section — top level</option>{sections.map((entry) => <option key={entry.slug} value={entry.slug}>{entry.title}</option>)}</select><p className="mt-2 text-xs text-secondary">Groups this page in the sidebar. Manage sections from the project page.</p></div>
       <div><label htmlFor="document-json" className="mb-2 block text-xs text-secondary">Document JSON</label><textarea id="document-json" rows={22} spellCheck={false} value={source} onChange={(event) => setSource(event.target.value)} className={`${inputClass} resize-y font-mono text-[12px] leading-relaxed`} /></div>
       {error && <p role="alert" className="whitespace-pre-wrap rounded-control border border-syn-number p-3 text-sm text-primary">{error}</p>}
       <p role="status" className="text-xs text-secondary">{notice || "Saved content uses the README theme. HTML, custom styles, and scripts are not accepted."}</p>

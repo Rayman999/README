@@ -220,7 +220,12 @@ export const pages = pgTable(
     ),
   },
   (t) => [
-    uniqueIndex("pages_project_slug_idx").on(t.projectId, t.slug),
+    // Scoped to live pages. Deletion here is a soft delete, so without the
+    // predicate a deleted page keeps its slug reserved forever and the same
+    // page can never be recreated after being removed. Uniqueness among live
+    // pages is what actually matters: it is what makes an agent's create
+    // retry safe, and what keeps a URL pointing at one page.
+    uniqueIndex("pages_project_slug_idx").on(t.projectId, t.slug).where(sql`${t.deletedAt} is null`),
     index("pages_search_idx").using("gin", t.searchVector),
     index("pages_section_idx").on(t.sectionId),
   ],

@@ -59,3 +59,26 @@ test("request reader rejects oversized actual bodies and malformed JSON", async 
   await assert.rejects(readJson(new Request("https://example.test", { method: "POST", body: "x".repeat(200) }), 100), /limit/);
   await assert.rejects(readJson(new Request("https://example.test", { method: "POST", body: "{" })));
 });
+
+test("diagram blocks validate their own edges and stay searchable", () => {
+  const nodes = [{ id: "a", label: "You" }, { id: "b", label: "Agent" }, { id: "c", label: "README" }];
+  const good = { type: "diagram", title: "Flow", nodes, edges: [{ from: "a", to: "b", label: "asks" }, { from: "b", to: "c" }] };
+  const parsed = documentSchema.parse({ ...starterDocument, blocks: [good] });
+  const block = parsed.blocks[0] as Extract<typeof parsed.blocks[number], { type: "diagram" }>;
+  assert.equal(block.direction, "down");        // defaulted
+  assert.equal(block.nodes[0].role, "default"); // defaulted
+
+  // An edge pointing at a node that does not exist is a broken picture, so it
+  // is rejected rather than silently dropped at render time.
+  assert.equal(documentSchema.safeParse({ ...starterDocument, blocks: [{ ...good, edges: [{ from: "a", to: "ghost" }] }] }).success, false);
+  assert.equal(documentSchema.safeParse({ ...starterDocument, blocks: [{ ...good, nodes: [...nodes, { id: "a", label: "Duplicate" }] }] }).success, false);
+  assert.equal(documentSchema.safeParse({ ...starterDocument, blocks: [{ ...good, nodes: [nodes[0]] }] }).success, false);       // needs two
+  assert.equal(documentSchema.safeParse({ ...starterDocument, blocks: [{ ...good, nodes: [...nodes], edges: [] }] }).success, false);
+  assert.equal(documentSchema.safeParse({ ...starterDocument, blocks: [{ ...good, nodes: nodes.map((n) => ({ ...n, id: "has space" })) }] }).success, false);
+  assert.equal(documentSchema.safeParse({ ...starterDocument, blocks: [{ ...good, script: "x" }] }).success, false);
+
+  // Node and edge wording reaches the search index.
+  const text = documentText(parsed);
+  for (const fragment of ["Flow", "You", "Agent", "README", "asks"]) assert.match(text, new RegExp(fragment));
+});
+
