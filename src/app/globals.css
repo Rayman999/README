@@ -131,6 +131,34 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+/* Native dropdowns use the same dark surfaces as the rest of the app.
+   Keep the native control for keyboard navigation and mobile pickers. */
+select {
+  color-scheme: dark;
+  background-color: var(--surface-inset);
+  color: var(--text-primary);
+  cursor: pointer;
+}
+
+select option,
+select optgroup {
+  background-color: var(--surface-raised);
+  color: var(--text-primary);
+}
+
+select:focus-visible {
+  outline: 2px solid var(--text-secondary);
+  outline-offset: 2px;
+}
+
+select:disabled {
+  cursor: not-allowed;
+}
+
+select option:disabled {
+  color: var(--text-secondary);
+}
+
 ::selection {
   background: rgba(255, 255, 255, 0.08);
   color: var(--text-primary);
