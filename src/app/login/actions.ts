@@ -8,6 +8,7 @@ import { signIn } from "@/auth";
 import { db } from "@/db";
 import { users } from "@/db/schema";
 import { attachUserToWorkspace, registrationAllowed } from "@/lib/workspace";
+import { safeReturnTo } from "@/lib/mcp/security";
 
 export type FormState = { error?: string } | undefined;
 
@@ -42,7 +43,7 @@ export async function signInWithPassword(
     await signIn("credentials", {
       email: parsed.data.email.toLowerCase(),
       password: parsed.data.password,
-      redirectTo: "/",
+      redirectTo: safeReturnTo(formData.get("returnTo")),
     });
   } catch (error) {
     // next-auth throws a redirect on success — let it through.
@@ -96,7 +97,7 @@ export async function signUpWithPassword(
     await signIn("credentials", {
       email,
       password: parsed.data.password,
-      redirectTo: "/",
+      redirectTo: safeReturnTo(formData.get("returnTo")),
     });
   } catch (error) {
     if (error instanceof AuthError) {

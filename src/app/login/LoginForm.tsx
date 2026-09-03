@@ -14,12 +14,14 @@ export function LoginForm({
   githubConfigured,
   isFirstUser,
   signUpAllowed,
+  returnTo = "/",
 }: {
   githubAction: () => Promise<void>;
   githubConfigured: boolean;
   isFirstUser: boolean;
   /** Owners can close sign-up; when they have, it is not offered at all. */
   signUpAllowed: boolean;
+  returnTo?: string;
 }) {
   const [mode, setMode] = useState<Mode>(isFirstUser ? "signup" : "signin");
   const [showPassword, setShowPassword] = useState(false);
@@ -57,6 +59,7 @@ export function LoginForm({
       )}
 
       <form action={formAction} className="mt-5" noValidate>
+        <input type="hidden" name="returnTo" value={returnTo} />
         {signingUp && (
           <div className="mb-4">
             <label htmlFor="name" className={LABEL}>

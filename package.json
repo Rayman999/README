@@ -9,12 +9,15 @@
     "lint": "eslint",
     "test:documents": "tsx --test tests/documents.test.ts",
     "test:documents:db": "tsx --test tests/documents-db.test.ts",
+    "test:mcp": "tsx --test tests/mcp.test.ts",
+    "test:mcp:db": "tsx --test tests/mcp-db.test.ts",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:studio": "drizzle-kit studio"
   },
   "dependencies": {
     "@auth/drizzle-adapter": "^1.11.3",
+    "@modelcontextprotocol/sdk": "^1.30.0",
     "bcryptjs": "^3.0.3",
     "drizzle-orm": "^0.45.2",
     "hast-util-to-string": "^3.0.1",

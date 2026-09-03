@@ -10,6 +10,14 @@ const nextConfig: NextConfig = {
   // Self-contained production server (only the files a request needs, no
   // full node_modules) — what the Dockerfile's runtime stage copies out.
   output: "standalone",
+  async headers() {
+    return [{ source: "/oauth/:path*", headers: [
+      { key: "Referrer-Policy", value: "no-referrer" },
+      { key: "X-Frame-Options", value: "DENY" },
+      { key: "Content-Security-Policy", value: "frame-ancestors 'none'" },
+      { key: "Cache-Control", value: "no-store" },
+    ] }];
+  },
   typescript: {
     ignoreBuildErrors: false,
   },

@@ -3,11 +3,9 @@ import { getWorkspace } from "@/lib/workspace";
 import type { Role } from "@/lib/workspace";
 
 /**
- * Session auth for the UI (BUILD.md §6 — "Session auth for the UI"). Bearer
- * token auth for agents/MCP is a separate slice (api_tokens table exists;
- * the verification path and MCP route are not built yet) — these routes are
- * reachable from the app today, and will accept a token too once that lands,
- * without changing this shape.
+ * Session auth for the UI and its REST routes. Agent OAuth is deliberately
+ * isolated to /api/mcp and src/lib/mcp/oauth.ts; an agent token does not grant
+ * access to member administration or the broader session-authenticated API.
  */
 export async function requireSession() {
   const session = await auth();

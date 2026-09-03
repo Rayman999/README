@@ -5,6 +5,7 @@ import { db } from "@/db";
 import { users } from "@/db/schema";
 import { getWorkspace } from "@/lib/workspace";
 import { LoginForm } from "./LoginForm";
+import { safeReturnTo } from "@/lib/mcp/security";
 
 export const dynamic = "force-dynamic";
 
@@ -21,12 +22,13 @@ const ERRORS: Record<string, string> = {
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string }>;
+  searchParams: Promise<{ error?: string; returnTo?: string }>;
 }) {
+  const { error, returnTo: requestedReturn } = await searchParams;
+  const returnTo = safeReturnTo(requestedReturn);
   const session = await auth();
-  if (session?.user) redirect("/");
+  if (session?.user) redirect(returnTo);
 
-  const { error } = await searchParams;
   const errorMessage = error ? (ERRORS[error] ?? ERRORS.Default) : null;
 
   const githubConfigured = Boolean(
@@ -52,7 +54,7 @@ export default async function LoginPage({
 
   async function githubAction() {
     "use server";
-    await signIn("github", { redirectTo: "/" });
+    await signIn("github", { redirectTo: returnTo });
   }
 
   return (
@@ -96,6 +98,7 @@ export default async function LoginPage({
 
         <div className="mt-7">
           <LoginForm
+            returnTo={returnTo}
             githubAction={githubAction}
             githubConfigured={githubConfigured}
             isFirstUser={isFirstUser}

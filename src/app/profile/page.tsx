@@ -156,6 +156,11 @@ export default async function ProfilePage() {
 
         {/* --- editing your own details ------------------------------------ */}
         <section className="mt-10">
+          <SectionHeading>Agent connections</SectionHeading>
+          <p className="mt-2 text-[13px] text-secondary">Connect ChatGPT to your documentation and manage its access.</p>
+          <Link href="/connections" className="mt-4 inline-flex min-h-11 items-center rounded-control border border-border-visible px-4 text-sm text-primary hover:bg-white/5">Manage connections</Link>
+        </section>
+        <section className="mt-10">
           <SectionHeading>Details</SectionHeading>
           <div className="auth-panel mt-4 p-5">
             <AvatarUpload image={account.image} initial={initial} />

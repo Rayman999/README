@@ -241,6 +241,7 @@ export const pageRevisions = pgTable(
     }),
     authorType: text("author_type", { enum: ["human", "agent"] }).notNull(),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    agentConnectionId: uuid("agent_connection_id"),
   },
   (t) => [index("page_revisions_page_idx").on(t.pageId)],
 );
@@ -260,3 +261,48 @@ export const apiTokens = pgTable("api_tokens", {
   lastUsedAt: timestamp("last_used_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });
+
+// Owner-registered OAuth clients. Redirect URIs are exact matches; no public
+// registration or arbitrary metadata fetching is exposed by this deployment.
+export const oauthClients = pgTable("oauth_clients", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  workspaceId: uuid("workspace_id").notNull().references(() => workspaces.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  secretHash: text("secret_hash").notNull(),
+  redirectUris: text("redirect_uris").array().notNull(),
+  scopes: text("scopes").array().notNull(),
+  revokedAt: timestamp("revoked_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const oauthGrants = pgTable("oauth_grants", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  clientId: uuid("client_id").notNull().references(() => oauthClients.id, { onDelete: "cascade" }),
+  userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  workspaceId: uuid("workspace_id").notNull().references(() => workspaces.id, { onDelete: "cascade" }),
+  scopes: text("scopes").array().notNull(),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  revokedAt: timestamp("revoked_at", { withTimezone: true }),
+  lastUsedAt: timestamp("last_used_at", { withTimezone: true }),
+  rateWindow: timestamp("rate_window", { withTimezone: true }).notNull().defaultNow(),
+  requestCount: integer("request_count").notNull().default(0),
+  writeCount: integer("write_count").notNull().default(0),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [index("oauth_grants_user_idx").on(t.userId)]);
+
+export const oauthCodes = pgTable("oauth_codes", {
+  hash: text("hash").primaryKey(),
+  grantId: uuid("grant_id").notNull().references(() => oauthGrants.id, { onDelete: "cascade" }),
+  redirectUri: text("redirect_uri").notNull(),
+  challenge: text("challenge").notNull(),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  usedAt: timestamp("used_at", { withTimezone: true }),
+});
+
+export const oauthTokens = pgTable("oauth_tokens", {
+  hash: text("hash").primaryKey(),
+  grantId: uuid("grant_id").notNull().references(() => oauthGrants.id, { onDelete: "cascade" }),
+  kind: text("kind", { enum: ["access", "refresh"] }).notNull(),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  usedAt: timestamp("used_at", { withTimezone: true }),
+}, (t) => [index("oauth_tokens_grant_idx").on(t.grantId), index("oauth_tokens_expiry_idx").on(t.expiresAt)]);

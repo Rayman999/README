@@ -191,6 +191,8 @@ export async function createPage(input: {
   tags?: string[];
   extendsPageId?: string | null;
   authorType: "human" | "agent";
+  authorId?: string;
+  agentConnectionId?: string;
 }) {
   const [{ value: count }] = await db
     .select({ value: sql<number>`count(*)::int` })
@@ -225,6 +227,8 @@ export async function createPage(input: {
     body: row.body,
     document: row.document,
     authorType: input.authorType,
+    authorId: input.authorId,
+    agentConnectionId: input.agentConnectionId,
   });
 
   return row;
@@ -246,13 +250,14 @@ export async function updatePage(
   }>,
   authorType: "human" | "agent",
   expectedVersion?: number,
+  audit?: { authorId: string; agentConnectionId: string; draftOnly?: boolean },
 ) {
   const document = patch.document ? documentSchema.parse(patch.document) : undefined;
   return db.transaction(async (tx) => {
   const [row] = await tx
     .update(pages)
     .set({ ...patch, ...(document ? { document, body: documentText(document) } : {}), authorType, version: sql`${pages.version} + 1`, updatedAt: new Date() })
-    .where(and(eq(pages.id, id), isNull(pages.deletedAt), expectedVersion === undefined ? undefined : eq(pages.version, expectedVersion)))
+    .where(and(eq(pages.id, id), isNull(pages.deletedAt), expectedVersion === undefined ? undefined : eq(pages.version, expectedVersion), audit?.draftOnly ? eq(pages.status, "draft") : undefined))
     .returning();
 
   if (row && (patch.body !== undefined || patch.title !== undefined || document)) {
@@ -262,6 +267,8 @@ export async function updatePage(
       body: row.body,
       document: row.document,
       authorType,
+      authorId: audit?.authorId,
+      agentConnectionId: audit?.agentConnectionId,
     });
   }
 
