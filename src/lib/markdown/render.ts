@@ -9,6 +9,7 @@ import rehypeStringify from "rehype-stringify";
 import { visit } from "unist-util-visit";
 import { toString as hastToString } from "hast-util-to-string";
 import type { Root, Element } from "hast";
+import type { Blockquote } from "mdast";
 import { codeToHtml } from "shiki";
 import { readmeSyntaxTheme } from "./shiki-theme";
 
@@ -50,7 +51,7 @@ const ALERT_BORDER: Record<string, string> = {
 /** GitHub alert syntax: a blockquote whose first line is `[!NOTE]`. */
 function remarkGithubAlerts() {
   return (tree: Root) => {
-    visit(tree, "blockquote", (node: any) => {
+    visit(tree, "blockquote", (node: Blockquote) => {
       const first = node.children?.[0];
       if (first?.type !== "paragraph") return;
       const text = first.children?.[0];
