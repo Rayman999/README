@@ -19,11 +19,11 @@ export default async function ComposePage({ params, searchParams }: {
   if (!canWrite(session.user.role)) redirect(`/p/${project.slug}`);
   const pageSlug = (await searchParams).page;
   const page = pageSlug ? await getPageBySlug(project.id, pageSlug) : undefined;
-  if (pageSlug && (!page || !page.document)) notFound();
+  if (pageSlug && !page) notFound();
   const section = page?.sectionId ? await getSectionById(page.sectionId) : undefined;
   const sections = (await listSections(project.id)).map((entry) => ({ slug: entry.slug, title: entry.title }));
   return <main id="main-content" tabIndex={-1} className="mx-auto max-w-[1500px] px-5 py-8 sm:px-10">
     <Link href={`/p/${project.slug}`} className="text-[13px] text-secondary hover:text-primary">← {project.name}</Link>
-    <div className="mt-6"><DocumentComposer project={project.slug} sections={sections} initial={page?.document ? { slug: page.slug, title: page.title, description: page.description, status: page.status, document: page.document, version: page.version, section: section?.slug ?? "", href: section ? `/p/${project.slug}/${section.slug}/${page.slug}` : `/p/${project.slug}/${page.slug}` } : undefined} /></div>
+    <div className="mt-6"><DocumentComposer project={project.slug} sections={sections} initial={page ? { slug: page.slug, title: page.title, description: page.description, status: page.status, body: page.body, document: page.document, version: page.version, section: section?.slug ?? "", href: section ? `/p/${project.slug}/${section.slug}/${page.slug}` : `/p/${project.slug}/${page.slug}` } : undefined} /></div>
   </main>;
 }

@@ -81,8 +81,7 @@ export async function PATCH(
     });
   }
   const data = parsed.data;
-  if (page.document && data.body !== undefined) return badRequest("This is a structured page. Update document instead of body.");
-  if ((page.document || data.document) && data.expectedVersion === undefined) return badRequest("Structured updates require expectedVersion from the latest page response.");
+  if ((data.body !== undefined || page.document || data.document) && data.expectedVersion === undefined) return badRequest("Content updates require expectedVersion from the latest page response.");
 
   let sectionId: string | null | undefined = undefined;
   if (data.section !== undefined) {

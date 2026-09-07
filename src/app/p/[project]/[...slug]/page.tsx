@@ -174,7 +174,7 @@ export default async function DocPage({
 
         <div className="page-utilities">
           <PageHistory project={project.slug} page={page.slug} />
-          {canWrite(session.user.role) && <PageActions project={project.slug} page={page.slug} status={page.status} version={page.version} editable={Boolean(page.document)} projectHref={projectHref} />}
+          {canWrite(session.user.role) && <PageActions project={project.slug} page={page.slug} status={page.status} version={page.version} editable projectHref={projectHref} />}
         </div>
         <div className="reading-content">{page.document ? <DocumentRenderer document={page.document} /> : <div className="doc-body" dangerouslySetInnerHTML={{ __html: html }} />}</div>
         <ReadingReflection />

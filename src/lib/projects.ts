@@ -241,7 +241,7 @@ export async function updatePage(
     title: string;
     description: string;
     body: string;
-    document: ReadmeDocument;
+    document: ReadmeDocument | null;
     status: "draft" | "stable" | "deprecated";
     sectionId: string | null;
     position: number;
@@ -252,11 +252,19 @@ export async function updatePage(
   expectedVersion?: number,
   audit?: { authorId: string; agentConnectionId: string; draftOnly?: boolean },
 ) {
-  const document = patch.document ? documentSchema.parse(patch.document) : undefined;
+  const hasDocument = patch.document !== undefined;
+  const document = patch.document ? documentSchema.parse(patch.document) : patch.document;
   return db.transaction(async (tx) => {
   const [row] = await tx
     .update(pages)
-    .set({ ...patch, ...(document ? { document, body: documentText(document) } : {}), authorType, version: sql`${pages.version} + 1`, updatedAt: new Date() })
+    .set({
+      ...patch,
+      ...(hasDocument ? { document, ...(document ? { body: documentText(document) } : {}) } : {}),
+      ...(patch.body !== undefined ? { body: patch.body, document: null } : {}),
+      authorType,
+      version: sql`${pages.version} + 1`,
+      updatedAt: new Date(),
+    })
     .where(and(eq(pages.id, id), isNull(pages.deletedAt), expectedVersion === undefined ? undefined : eq(pages.version, expectedVersion), audit?.draftOnly ? eq(pages.status, "draft") : undefined))
     .returning();
 
