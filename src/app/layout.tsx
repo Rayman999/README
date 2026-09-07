@@ -27,6 +27,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`${inter.variable} ${jetbrainsMono.variable} antialiased`}>
+        <a href="#main-content" className="skip-link">Skip to content</a>
         <RouteTransition>{children}</RouteTransition>
       </body>
     </html>

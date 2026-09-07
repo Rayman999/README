@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useState, type ReactNode } from "react";
-import Link from "next/link";
+import Link from "@/components/shell/NavigationLink";
 import type { NavSection, TocEntry } from "./types";
+import { MotionDialog } from "./MotionDialog";
 import { Toc } from "./Toc";
 import { Header } from "./Header";
 import { Icon, ICONS, HEADER_H } from "./icons";
@@ -20,6 +21,7 @@ function SidebarNav({
   projectName?: string;
   projectHref?: string;
 }) {
+  const [query, setQuery] = useState("");
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
 
   // Persist expand/collapse across navigations.
@@ -79,12 +81,19 @@ function SidebarNav({
         </p>
       )}
 
+      <label className="nav-filter">Find a page
+        <input type="search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Filter page titles…" />
+      </label>
+      {query && !sections.some(s => s.pages.some(p => p.title.toLowerCase().includes(query.toLowerCase()))) && <p role="status" className="px-2 text-sm">No matching pages. Try a shorter title.</p>}
       {sections.map((section) => {
-        const isCollapsed = collapsed[section.slug] ?? false;
+        const pages = section.pages.filter(p => p.title.toLowerCase().includes(query.toLowerCase()));
+        if (query && !pages.length) return null;
+        const isCollapsed = !query && (collapsed[section.slug] ?? false);
         return (
           <div key={section.slug} className="mb-5">
             <button
               type="button"
+              aria-expanded={!isCollapsed}
               onClick={() => toggle(section.slug)}
               className="ease-base flex w-full items-center gap-1.5 rounded-control px-2 py-1 text-[11px] font-medium tracking-[0.06em] text-muted uppercase transition-colors duration-200 hover:text-tertiary"
             >
@@ -99,9 +108,9 @@ function SidebarNav({
               {section.title}
             </button>
 
-            {!isCollapsed && (
-              <ul className="mt-1">
-                {section.pages.map((page) => {
+            <div className="nav-collapse" data-open={!isCollapsed} inert={isCollapsed}>
+              <div className="nav-collapse-inner"><ul className="mt-1">
+                {pages.map((page) => {
                   const active = page.href === currentHref;
                   return (
                     <li key={page.slug}>
@@ -131,8 +140,8 @@ function SidebarNav({
                     </li>
                   );
                 })}
-              </ul>
-            )}
+              </ul></div>
+            </div>
           </div>
         );
       })}
@@ -162,13 +171,11 @@ export function AppShell({
   children: ReactNode;
 }) {
   const [drawerOpen, setDrawerOpen] = useState(false);
-
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setDrawerOpen(false);
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+    const desktop = window.matchMedia("(min-width: 1024px)");
+    const closeOnDesktop = () => { if (desktop.matches) setDrawerOpen(false); };
+    desktop.addEventListener("change", closeOnDesktop);
+    return () => desktop.removeEventListener("change", closeOnDesktop);
   }, []);
 
   return (
@@ -185,7 +192,7 @@ export function AppShell({
       >
         {/* Left nav — flat, carved into the shell. No card, no background. */}
         <aside
-          className="hidden shrink-0 py-8 pr-2 pl-5 lg:block"
+          className="reading-rail hidden shrink-0 py-8 pr-2 pl-5 lg:block"
           style={{
             width: 272,
             position: "sticky",
@@ -203,11 +210,11 @@ export function AppShell({
         </aside>
 
         {/* Content column — the only elevated object on screen. */}
-        <main className="min-w-0 flex-1 px-5 py-8 lg:px-8">{children}</main>
+        <main id="main-content" tabIndex={-1} className="min-w-0 flex-1 px-5 py-8 lg:px-8">{children}</main>
 
         {/* Right TOC — the quietest region. Flat on --bg-base. */}
         <aside
-          className="hidden shrink-0 py-8 pr-5 pl-3 xl:block"
+          className="reading-rail hidden shrink-0 py-8 pr-5 pl-3 xl:block"
           style={{
             width: 232,
             position: "sticky",
@@ -221,32 +228,14 @@ export function AppShell({
       </div>
 
       {/* Mobile drawer */}
-      {drawerOpen && (
-        <div className="fixed inset-0 z-40 lg:hidden">
-          <button
-            type="button"
-            aria-label="Close navigation"
-            onClick={() => setDrawerOpen(false)}
-            className="absolute inset-0 bg-black/50"
-          />
-          <div className="absolute inset-y-0 left-0 w-[280px] overflow-y-auto border-r border-border-faint bg-base px-5 py-6">
-            <button
-              type="button"
-              onClick={() => setDrawerOpen(false)}
-              aria-label="Close navigation"
-              className="ease-base mb-4 rounded-control p-1.5 text-muted transition-colors duration-200 hover:bg-state-hover hover:text-primary"
-            >
-              <Icon path={ICONS.close} size={16} />
-            </button>
-            <SidebarNav
-            sections={sections}
-            currentHref={currentHref}
-            projectName={projectName}
-            projectHref={projectHref}
-          />
-          </div>
-        </div>
-      )}
+      <MotionDialog open={drawerOpen} onClose={() => setDrawerOpen(false)}>
+        <button type="button" onClick={() => setDrawerOpen(false)} aria-label="Close navigation"
+          className="mb-4 rounded-control p-2 text-muted hover:bg-state-hover hover:text-primary">
+          <Icon path={ICONS.close} size={16} />
+        </button>
+        <SidebarNav sections={sections} currentHref={currentHref}
+          projectName={projectName} projectHref={projectHref} />
+      </MotionDialog>
     </div>
   );
 }

@@ -1,6 +1,6 @@
 import { and, asc, eq, isNull, sql } from "drizzle-orm";
 import { db } from "@/db";
-import { pageRevisions, pages, projects, sections } from "@/db/schema";
+import { learningPaths, pageRevisions, pages, projects, sections } from "@/db/schema";
 import { documentSchema, documentText, type ReadmeDocument } from "./documents/schema";
 
 export { slugify } from "./slug";
@@ -291,4 +291,21 @@ export async function listPageRevisions(pageId: string) {
     .from(pageRevisions)
     .where(eq(pageRevisions.pageId, pageId))
     .orderBy(sql`${pageRevisions.createdAt} desc`);
+}
+
+export async function listLearningPaths(projectId: string) {
+  return db.select().from(learningPaths).where(eq(learningPaths.projectId, projectId)).orderBy(asc(learningPaths.createdAt));
+}
+
+export async function createLearningPath(input: {
+  projectId: string; title: string; description: string; pageSlugs: string[]; createdBy: string;
+}) {
+  const [row] = await db.insert(learningPaths).values(input).returning();
+  return row;
+}
+
+export async function deleteLearningPath(id: string, projectId: string) {
+  const [row] = await db.delete(learningPaths)
+    .where(and(eq(learningPaths.id, id), eq(learningPaths.projectId, projectId))).returning();
+  return row;
 }

@@ -61,7 +61,7 @@ export function LoginForm({
       <form action={formAction} className="mt-5" noValidate>
         <input type="hidden" name="returnTo" value={returnTo} />
         {signingUp && (
-          <div className="mb-4">
+          <div className="motion-enter mb-4">
             <label htmlFor="name" className={LABEL}>
               Name
             </label>

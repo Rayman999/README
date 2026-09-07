@@ -1,4 +1,4 @@
-import Link from "next/link";
+import Link from "@/components/shell/NavigationLink";
 import { redirect } from "next/navigation";
 import { auth, signOut } from "@/auth";
 import { getWorkspace } from "@/lib/workspace";
@@ -28,7 +28,7 @@ export default async function NewProjectPage() {
     <div className="min-h-screen bg-base">
       <Header signOutAction={signOutAction} userEmail={session.user.email} />
 
-      <main
+      <main id="main-content" tabIndex={-1}
         className="mx-auto w-full max-w-[600px] px-6 pb-24"
         style={{ paddingTop: HEADER_H + 48 }}
       >
@@ -44,8 +44,8 @@ export default async function NewProjectPage() {
           Create a project
         </h1>
         <p className="mt-1.5 text-[14px] leading-relaxed text-secondary">
-          A project holds documentation pages and the context record agents read
-          before starting work.
+          Give your team a home for system explanations, coding standards, and
+          decisions. Start with a name and a short introduction.
         </p>
 
         <div className="mt-7">

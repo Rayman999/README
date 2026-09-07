@@ -1,4 +1,5 @@
-import Link from "next/link";
+import { ReadingTools, ReadingReflection } from "@/components/documents/ReadingTools";
+import Link from "@/components/shell/NavigationLink";
 import { notFound, redirect } from "next/navigation";
 import { auth, signOut } from "@/auth";
 import { getWorkspace } from "@/lib/workspace";
@@ -13,6 +14,7 @@ import { renderMarkdown } from "@/lib/markdown/render";
 import { documentHeadings } from "@/lib/documents/schema";
 import { DocumentRenderer } from "@/components/documents/DocumentRenderer";
 import { PageActions } from "@/components/documents/PageActions";
+import { PageHistory } from "@/components/documents/PageHistory";
 import { canWrite } from "@/lib/api/context";
 import { AppShell } from "@/components/shell/AppShell";
 import type { NavSection, TocEntry } from "@/components/shell/types";
@@ -167,10 +169,15 @@ export default async function DocPage({
           {page.description}
         </p>
 
-        <hr className="my-9 border-0 border-t border-border-subtle" />
+        <ReadingTools key={canonicalHref} entries={toc} />
+        {page.status !== "stable" && <p className="document-status" role="note">{page.status === "draft" ? "Draft · This page is still being reviewed. Confirm details before using them in your work." : "Deprecated · This guidance may be outdated. Check with the project team before implementing it."}</p>}
 
-        {canWrite(session.user.role) && <PageActions project={project.slug} page={page.slug} status={page.status} version={page.version} editable={Boolean(page.document)} projectHref={projectHref} />}
-        {page.document ? <DocumentRenderer document={page.document} /> : <div className="doc-body" dangerouslySetInnerHTML={{ __html: html }} />}
+        <div className="page-utilities">
+          <PageHistory project={project.slug} page={page.slug} />
+          {canWrite(session.user.role) && <PageActions project={project.slug} page={page.slug} status={page.status} version={page.version} editable={Boolean(page.document)} projectHref={projectHref} />}
+        </div>
+        <div className="reading-content">{page.document ? <DocumentRenderer document={page.document} /> : <div className="doc-body" dangerouslySetInnerHTML={{ __html: html }} />}</div>
+        <ReadingReflection />
 
         {(neighbours.previous || neighbours.next) && (
           <div className="mt-12 grid grid-cols-1 gap-3 border-t border-border-subtle pt-8 sm:grid-cols-2">

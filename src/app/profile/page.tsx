@@ -1,4 +1,4 @@
-import Link from "next/link";
+import Link from "@/components/shell/NavigationLink";
 import { redirect } from "next/navigation";
 import { eq } from "drizzle-orm";
 import { auth, signOut } from "@/auth";
@@ -87,7 +87,7 @@ export default async function ProfilePage() {
     <div className="min-h-screen bg-base">
       <Header signOutAction={signOutAction} userEmail={session.user.email} />
 
-      <main
+      <main id="main-content" tabIndex={-1}
         className="mx-auto w-full max-w-[760px] px-6 pb-24"
         style={{ paddingTop: HEADER_H + 48 }}
       >

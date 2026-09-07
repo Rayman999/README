@@ -1,4 +1,4 @@
-import Link from "next/link";
+import Link from "@/components/shell/NavigationLink";
 import { redirect } from "next/navigation";
 import { headers } from "next/headers";
 import { and, eq } from "drizzle-orm";
@@ -15,7 +15,7 @@ export default async function AuthorizePage({ searchParams }: { searchParams: Pr
   const query = await searchParams;
   let request: Awaited<ReturnType<typeof validateAuthorization>>;
   try { request = await validateAuthorization(query); }
-  catch { return <main className="mx-auto max-w-lg px-6 py-20"><h1 className="text-2xl text-heading">Connection request rejected</h1><p className="mt-4 text-secondary">The client, callback URL, resource or permissions are invalid. Check your connection setup and try again.</p><Link href="/connections" className="mt-6 inline-block underline">Connection settings</Link></main>; }
+  catch { return <main id="main-content" tabIndex={-1} className="mx-auto max-w-lg px-6 py-20"><h1 className="text-2xl text-heading">Connection request rejected</h1><p className="mt-4 text-secondary">The client, callback URL, resource or permissions are invalid. Check your connection setup and try again.</p><Link href="/connections" className="mt-6 inline-block underline">Connection settings</Link></main>; }
   const { params, client, scopes } = request;
   const session = await auth();
   // Drop absent parameters before re-serialising. URLSearchParams stringifies
@@ -28,7 +28,7 @@ export default async function AuthorizePage({ searchParams }: { searchParams: Pr
     db.query.workspaceMembers.findFirst({ where: and(eq(workspaceMembers.userId, session.user.id), eq(workspaceMembers.workspaceId, client.workspaceId)) }),
     db.query.workspaces.findFirst({ where: eq(workspaces.id, client.workspaceId) }),
   ]);
-  if (!member) return <main className="mx-auto max-w-lg px-6 py-20"><h1 className="text-2xl text-heading">No workspace access</h1><p className="mt-4 text-secondary">This account cannot approve access to this workspace.</p></main>;
+  if (!member) return <main id="main-content" tabIndex={-1} className="mx-auto max-w-lg px-6 py-20"><h1 className="text-2xl text-heading">No workspace access</h1><p className="mt-4 text-secondary">This account cannot approve access to this workspace.</p></main>;
   const canWrite = scopes.includes("docs:write") && member.role !== "viewer";
 
   async function decide(form: FormData) {
@@ -47,7 +47,7 @@ export default async function AuthorizePage({ searchParams }: { searchParams: Pr
     redirect(callback.toString());
   }
 
-  return <main className="flex min-h-screen items-center justify-center px-6 py-16">
+  return <main id="main-content" tabIndex={-1} className="flex min-h-screen items-center justify-center px-6 py-16">
     <section className="auth-panel w-full max-w-[480px] p-7">
       <p className="text-xs tracking-widest text-muted uppercase">README / Agent connection</p>
       <h1 className="mt-4 text-[26px] font-semibold text-heading">Connect {client.name}?</h1>

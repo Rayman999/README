@@ -1,4 +1,5 @@
 import NextAuth from "next-auth";
+import { createHash } from "node:crypto";
 import GitHub from "next-auth/providers/github";
 import Credentials from "next-auth/providers/credentials";
 import { DrizzleAdapter } from "@auth/drizzle-adapter";
@@ -19,6 +20,14 @@ const credentialsSchema = z.object({
   password: z.string().min(1),
 });
 
+// Tie the cookie namespace to the key that encrypts JWT sessions. When the
+// secret rotates, browsers automatically start with an empty session instead
+// of repeatedly offering a token that can no longer be decrypted.
+const sessionCookieVersion = createHash("sha256")
+  .update(process.env.AUTH_SECRET ?? "development")
+  .digest("hex")
+  .slice(0, 10);
+
 export const { handlers, auth, signIn, signOut } = NextAuth({
   adapter: DrizzleAdapter(db, {
     usersTable: users,
@@ -29,13 +38,11 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   // Credentials sign-in requires JWT sessions. The adapter still persists
   // users and linked OAuth accounts; only the session itself is a token.
   session: { strategy: "jwt" },
-  // Distinct cookie name. Database-session cookies issued before the switch
-  // to JWT cannot be decrypted, and Auth.js does not discard them — it
-  // throws JWTSessionError on every request instead. Reading a different
-  // name means any stale cookie is simply ignored.
+  // The versioned name also leaves database-session cookies and JWTs encrypted
+  // with an older secret untouched and ignored.
   cookies: {
     sessionToken: {
-      name: "readme.session-token",
+      name: `readme.session-token.${sessionCookieVersion}`,
       options: {
         httpOnly: true,
         sameSite: "lax",

@@ -58,7 +58,7 @@ export default async function LoginPage({
   }
 
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center px-6 py-16">
+    <main id="main-content" tabIndex={-1} className="flex min-h-screen flex-col items-center justify-center px-6 py-16">
       <div className="stagger w-full max-w-[392px]">
         <div className="flex flex-col items-center">
           <span className="flex h-10 w-10 items-center justify-center rounded-[12px] border border-border-visible bg-white/[0.035] text-tertiary">
@@ -81,8 +81,8 @@ export default async function LoginPage({
           </h1>
           <p className="mt-1.5 text-center text-[13.5px] text-secondary">
             {named
-              ? "Documentation, written by agents and humans alike."
-              : "Your documentation workspace."}
+              ? "Your team’s knowledge, ready to explore."
+              : "A place to learn how the work works."}
           </p>
         </div>
 

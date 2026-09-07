@@ -1,4 +1,4 @@
-import Link from "next/link";
+import Link from "@/components/shell/NavigationLink";
 import { redirect } from "next/navigation";
 import { auth, signOut } from "@/auth";
 import { getWorkspace } from "@/lib/workspace";
@@ -28,27 +28,24 @@ export default async function Home() {
     await signOut({ redirectTo: "/login" });
   }
 
-  const roots = projects.filter((p) => p.parentId === null);
+  const libraryProjects = projects;
 
   return (
     <div className="min-h-screen bg-base">
       <Header signOutAction={signOutAction} userEmail={session.user.email} />
 
-      <main
+      <main id="main-content" tabIndex={-1}
         className="mx-auto w-full max-w-[900px] px-6 pb-24"
         style={{ paddingTop: HEADER_H + 48 }}
       >
-        <div className="flex items-end justify-between gap-6">
+        <p className="eyebrow">Your team’s knowledge library</p>
+        <div className="flex flex-wrap items-end justify-between gap-6">
           <div>
-            <h1 className="text-[26px] leading-tight font-semibold text-heading">
+            <h1 className="text-[36px] leading-tight font-semibold text-heading">
               {workspace?.name ?? "Workspace"}
             </h1>
             <p className="mt-1.5 text-[14px] text-secondary">
-              {projects.length === 0
-                ? "No projects yet."
-                : `${projects.length} project${projects.length === 1 ? "" : "s"}.`}{" "}
-              Signed in as {session.user.email}
-              {session.user.role ? ` · ${session.user.role}` : ""}.
+              Understand the systems. Learn the standards. Build with confidence.
             </p>
           </div>
 
@@ -63,9 +60,10 @@ export default async function Home() {
           )}
         </div>
 
-        <hr className="my-8 border-0 border-t border-border-subtle" />
+        <div className="library-intro"><span className="eyebrow">A little context goes a long way</span><h2>Make your next step an informed one.</h2><p>Explore a project to find the decisions, practical guides, and shared conventions behind the work.</p></div>
+        <div className="mb-5 flex items-center justify-between"><h2 className="text-lg font-semibold text-primary">Explore projects</h2><span className="text-sm">{projects.length} in your library</span></div>
 
-        {roots.length === 0 ? (
+        {libraryProjects.length === 0 ? (
           <div className="auth-panel px-8 py-12 text-center">
             <span className="mx-auto flex h-10 w-10 items-center justify-center rounded-[11px] border border-border-visible bg-white/[0.03] text-tertiary">
               <Icon path={ICONS.doc} size={17} />
@@ -74,8 +72,8 @@ export default async function Home() {
               Nothing documented yet
             </h2>
             <p className="mx-auto mt-2 max-w-[420px] text-[13.5px] leading-relaxed text-secondary">
-              A project holds your documentation pages and the context record
-              agents read before they start work. Create one to begin.
+              A project brings together guides, standards, and decisions that
+              your team uses to understand the work.
             </p>
             {canEdit && (
               <Link
@@ -89,7 +87,7 @@ export default async function Home() {
           </div>
         ) : (
           <ul className="stagger grid gap-3 sm:grid-cols-2">
-            {roots.map((project) => {
+            {libraryProjects.map((project) => {
               const children = projects.filter(
                 (p) => p.parentId === project.id,
               );
@@ -97,7 +95,7 @@ export default async function Home() {
                 <li key={project.id}>
                   <Link
                     href={`/p/${project.slug}`}
-                    className="ease-base block h-full rounded-code border border-border-subtle bg-white/[0.018] p-4 transition-[background-color,transform] duration-200 hover:-translate-y-[2px] hover:bg-white/[0.035] active:translate-y-0"
+                    className="project-card ease-base block h-full rounded-code border border-border-subtle bg-white/[0.018] p-4 transition-[background-color,transform] duration-200 hover:-translate-y-[2px] hover:bg-white/[0.035] active:translate-y-0"
                   >
                     <div className="flex items-baseline justify-between gap-3">
                       <span className="text-[14px] font-medium text-primary">

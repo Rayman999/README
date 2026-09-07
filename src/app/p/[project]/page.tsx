@@ -1,12 +1,13 @@
-import Link from "next/link";
+import Link from "@/components/shell/NavigationLink";
 import { notFound, redirect } from "next/navigation";
 import { auth, signOut } from "@/auth";
 import { getWorkspace } from "@/lib/workspace";
-import { getProjectBySlug, getProjectTree } from "@/lib/projects";
+import { getProjectBySlug, getProjectTree, listLearningPaths } from "@/lib/projects";
 import { canWrite } from "@/lib/api/context";
 import { AppShell } from "@/components/shell/AppShell";
 import { Icon, ICONS } from "@/components/shell/icons";
 import { SectionManager } from "@/components/documents/SectionManager";
+import { LearningPaths } from "@/components/documents/LearningPaths";
 import type { NavSection, TocEntry } from "@/components/shell/types";
 
 export const dynamic = "force-dynamic";
@@ -58,7 +59,10 @@ export default async function ProjectPage({
   const project = await getProjectBySlug(workspace.id, slug);
   if (!project) notFound();
 
-  const tree = await getProjectTree(project.id);
+  const [tree, learningPaths] = await Promise.all([
+    getProjectTree(project.id),
+    listLearningPaths(project.id),
+  ]);
   const projectHref = `/p/${project.slug}`;
 
   const navSections: NavSection[] = tree.sections.map((section) => ({
@@ -74,6 +78,12 @@ export default async function ProjectPage({
   const pageCount =
     tree.sections.reduce((n, s) => n + s.pages.length, 0) +
     tree.loosePages.length;
+  const learningPages = [
+    ...tree.sections.flatMap(section => section.pages.map(page => ({
+      slug: page.slug, title: page.title, href: `${projectHref}/${section.slug}/${page.slug}`,
+    }))),
+    ...tree.loosePages.map(page => ({ slug: page.slug, title: page.title, href: `${projectHref}/${page.slug}` })),
+  ];
 
   if (tree.loosePages.length > 0) navSections.push({
     slug: "unsectioned", title: "Pages",
@@ -84,6 +94,7 @@ export default async function ProjectPage({
     { id: "overview", text: "Overview", level: 2 },
     { id: "conventions", text: "Conventions", level: 2 },
     { id: "open-questions", text: "Open questions", level: 2 },
+    { id: "learning-paths", text: "Learning paths", level: 2 },
     { id: "pages", text: "Pages", level: 2 },
   ];
 
@@ -128,7 +139,7 @@ export default async function ProjectPage({
           {project.summary}
         </p>
 
-        <hr className="my-9 border-0 border-t border-border-subtle" />
+        <div className="project-start"><div><span className="eyebrow">Start exploring</span><p>{pageCount} pages to help you understand this project.</p></div><a href="#pages">Browse documentation ↓</a></div>
 
         <div className="text-[15px] leading-[1.7] text-secondary">
           <SectionHeading id="overview">Overview</SectionHeading>
@@ -238,13 +249,15 @@ export default async function ProjectPage({
             )}
           </div>
 
+          <LearningPaths project={project.slug} paths={learningPaths} pages={learningPages} editable={canWrite(session.user.role)} />
+
           <div className="mt-9">
             <div className="flex flex-wrap items-center justify-between gap-3"><SectionHeading id="pages">Pages</SectionHeading>{canWrite(session.user.role) && <Link href={`/compose/${project.slug}`} className="rounded-control border border-border-visible px-3 py-2 text-[13px] text-primary hover:bg-state-hover">Create document</Link>}</div>
             {canWrite(session.user.role) && <SectionManager project={project.slug} sections={tree.sections.map((entry) => ({ id: entry.id, slug: entry.slug, title: entry.title, position: entry.position, pageCount: entry.pages.length }))} />}
 
             {pageCount > 0 ? (
               <div className="stagger mt-4 space-y-6">
-                {tree.loosePages.length > 0 && <ul className="space-y-2">{tree.loosePages.map((page) => <li key={page.id}><Link href={`${projectHref}/${page.slug}`} className="flex items-baseline gap-3 rounded-control px-2 py-1.5 hover:bg-state-hover"><span className="text-[14px] text-primary">{page.title}</span><span className="truncate text-[12.5px] text-muted">{page.description}</span></Link></li>)}</ul>}
+                {tree.loosePages.length > 0 && <ul className="space-y-2">{tree.loosePages.map((page) => <li key={page.id}><Link href={`${projectHref}/${page.slug}`} className="page-list-link flex items-baseline gap-3 rounded-control px-2 py-1.5 hover:bg-state-hover"><span className="text-[14px] text-primary">{page.title}</span><span className="truncate text-[12.5px] text-muted">{page.description}</span></Link></li>)}</ul>}
                 {tree.sections
                   .filter((s) => s.pages.length > 0)
                   .map((section) => (
@@ -257,7 +270,7 @@ export default async function ProjectPage({
                           <li key={page.id}>
                             <Link
                               href={`${projectHref}/${section.slug}/${page.slug}`}
-                              className="ease-base group flex items-baseline gap-3 rounded-control px-2 py-1.5 transition-colors duration-200 hover:bg-state-hover"
+                              className="page-list-link ease-base group flex items-baseline gap-3 rounded-control px-2 py-1.5 transition-colors duration-200 hover:bg-state-hover"
                             >
                               <span className="text-[14px] text-primary">
                                 {page.title}
@@ -281,8 +294,8 @@ export default async function ProjectPage({
                   No pages yet
                 </p>
                 <p className="mx-auto mt-1.5 max-w-[380px] text-[13px] leading-relaxed text-secondary">
-                  Create a structured document with themed cards, charts, and
-                  tables. Existing Markdown pages continue to work.
+                  This is where guides, coding standards, and system explanations
+                  will appear as your team documents its work.
                 </p>
               </div>
             )}

@@ -63,6 +63,7 @@ export function SectionManager({ project, sections }: { project: string; section
     <div className="mt-4">
       <button
         type="button"
+        aria-expanded={open}
         onClick={() => setOpen((value) => !value)}
         className="ease-base rounded-control border border-border-visible px-3 py-2 text-[13px] text-primary transition-colors duration-200 hover:bg-state-hover"
       >
@@ -70,7 +71,7 @@ export function SectionManager({ project, sections }: { project: string; section
       </button>
 
       {open && (
-        <div className="mt-3 rounded-control border border-border-subtle bg-white/[0.018] p-4">
+        <div className="motion-enter mt-3 rounded-control border border-border-subtle bg-white/[0.018] p-4">
           <form
             className="flex flex-wrap items-center gap-2"
             onSubmit={(event) => {

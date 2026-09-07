@@ -1,4 +1,6 @@
-import Link from "next/link";
+import { ReadingTools, ReadingReflection } from "@/components/documents/ReadingTools";
+import { documentHeadings } from "@/lib/documents/schema";
+import Link from "@/components/shell/NavigationLink";
 import { DocumentRenderer } from "@/components/documents/DocumentRenderer";
 import { starterDocument, type ReadmeDocument } from "@/lib/documents/schema";
 
@@ -25,8 +27,8 @@ const example: ReadmeDocument = {
 };
 
 export default function DocumentGuide() {
-  return <main className="mx-auto max-w-[960px] px-5 py-10 sm:px-10">
+  return <main id="main-content" tabIndex={-1} className="mx-auto max-w-[960px] px-5 py-10 sm:px-10">
     <Link href="/" className="text-sm text-secondary hover:text-primary">← Workspace</Link>
-    <article className="doc-panel mt-6 px-5 py-8 sm:p-12"><p className="text-[11px] tracking-widest text-secondary uppercase">README / Component guide</p><h1 className="mt-3 text-[32px] font-semibold text-heading">Rich documents. One theme.</h1><p className="mt-4 mb-9 text-sm text-secondary">A live reference for the structured document format. Open a project and choose Create document to try it.</p><DocumentRenderer document={example} /><details className="mt-10 border-t border-border-subtle pt-6"><summary className="cursor-pointer text-sm text-primary">View this example as JSON</summary><pre className="mt-4 max-h-[480px] overflow-auto rounded-code bg-inset p-4 font-mono text-xs text-primary">{JSON.stringify(example, null, 2)}</pre></details></article>
+    <article className="doc-panel mt-6 px-5 py-8 sm:p-12"><p className="text-[11px] tracking-widest text-secondary uppercase">README / Component guide</p><h1 className="mt-3 text-[32px] font-semibold text-heading">Rich documents. One theme.</h1><p className="mt-4 mb-9 text-sm text-secondary">A live reference for the structured document format. Open a project and choose Create document to try it.</p><ReadingTools entries={documentHeadings(example)} /><div className="reading-content"><DocumentRenderer document={example} /></div><ReadingReflection /><details className="mt-10 border-t border-border-subtle pt-6"><summary className="cursor-pointer text-sm text-primary">View this example as JSON</summary><pre className="mt-4 max-h-[480px] overflow-auto rounded-code bg-inset p-4 font-mono text-xs text-primary">{JSON.stringify(example, null, 2)}</pre></details></article>
   </main>;
 }

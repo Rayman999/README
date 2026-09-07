@@ -12,6 +12,9 @@ import { safeReturnTo } from "@/lib/mcp/security";
 
 export type FormState = { error?: string } | undefined;
 
+const DATABASE_ERROR =
+  "The local database is unavailable. Make sure the README Docker container is running, then try again.";
+
 const signInSchema = z.object({
   email: z.string().email("Enter a valid email address."),
   password: z.string().min(1, "Enter your password."),
@@ -70,28 +73,37 @@ export async function signUpWithPassword(
 
   const email = parsed.data.email.toLowerCase();
 
-  const existing = await db.query.users.findFirst({
-    where: eq(users.email, email),
-  });
+  let existing;
+  try {
+    existing = await db.query.users.findFirst({
+      where: eq(users.email, email),
+    });
+  } catch {
+    return { error: DATABASE_ERROR };
+  }
   if (existing) {
     return { error: "An account with that email already exists." };
   }
 
-  if (!(await registrationAllowed())) {
-    return {
-      error: "Registration is closed. Ask a workspace owner to add you.",
-    };
+  try {
+    if (!(await registrationAllowed())) {
+      return {
+        error: "Registration is closed. Ask a workspace owner to add you.",
+      };
+    }
+
+    const passwordHash = await bcrypt.hash(parsed.data.password, 10);
+    const [created] = await db
+      .insert(users)
+      .values({ email, name: parsed.data.name, passwordHash })
+      .returning();
+
+    // Created directly rather than by the adapter, so the workspace hookup
+    // that events.createUser normally performs has to happen here.
+    await attachUserToWorkspace(created.id);
+  } catch {
+    return { error: DATABASE_ERROR };
   }
-
-  const passwordHash = await bcrypt.hash(parsed.data.password, 10);
-  const [created] = await db
-    .insert(users)
-    .values({ email, name: parsed.data.name, passwordHash })
-    .returning();
-
-  // Created directly rather than by the adapter, so the workspace hookup
-  // that events.createUser normally performs has to happen here.
-  await attachUserToWorkspace(created.id);
 
   try {
     await signIn("credentials", {

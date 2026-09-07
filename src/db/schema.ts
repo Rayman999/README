@@ -251,6 +251,23 @@ export const pageRevisions = pgTable(
   (t) => [index("page_revisions_page_idx").on(t.pageId)],
 );
 
+// Curated reading sequences reuse pages instead of copying their content.
+// Slugs keep a path resilient when sections are reorganised.
+export const learningPaths = pgTable(
+  "learning_paths",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    projectId: uuid("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
+    title: text("title").notNull(),
+    description: text("description").notNull(),
+    pageSlugs: text("page_slugs").array().notNull().default(sql`'{}'::text[]`),
+    createdBy: uuid("created_by").references(() => users.id, { onDelete: "set null" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => [index("learning_paths_project_idx").on(t.projectId)],
+);
+
 // ---------------------------------------------------------------------------
 // API tokens
 // ---------------------------------------------------------------------------
