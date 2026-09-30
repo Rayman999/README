@@ -28,6 +28,14 @@ export async function getProjectBySlug(workspaceId: string, slug: string) {
   });
 }
 
+/** Foreign keys remove project content and keep sub-projects as top-level projects. */
+export async function deleteProject(workspaceId: string, slug: string, id: string) {
+  const [row] = await db.delete(projects)
+    .where(and(eq(projects.workspaceId, workspaceId), eq(projects.slug, slug), eq(projects.id, id)))
+    .returning({ id: projects.id });
+  return row;
+}
+
 /** Sections with their pages, ordered — the shape the sidebar needs. */
 export async function getProjectTree(projectId: string) {
   const [sectionRows, pageRows] = await Promise.all([

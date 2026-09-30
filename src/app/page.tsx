@@ -4,6 +4,7 @@ import { auth, signOut } from "@/auth";
 import { getWorkspace } from "@/lib/workspace";
 import { listProjects } from "@/lib/projects";
 import { Header } from "@/components/shell/Header";
+import { DeleteProjectButton } from "@/components/projects/DeleteProjectButton";
 import { Icon, ICONS, HEADER_H } from "@/components/shell/icons";
 
 export const dynamic = "force-dynamic";
@@ -93,28 +94,31 @@ export default async function Home() {
               );
               return (
                 <li key={project.id}>
-                  <Link
-                    href={`/p/${project.slug}`}
-                    className="project-card ease-base block h-full rounded-code border border-border-subtle bg-white/[0.018] p-4 transition-[background-color,transform] duration-200 hover:-translate-y-[2px] hover:bg-white/[0.035] active:translate-y-0"
-                  >
-                    <div className="flex items-baseline justify-between gap-3">
-                      <span className="text-[14px] font-medium text-primary">
-                        {project.name}
-                      </span>
-                      <span className="shrink-0 text-[10.5px] tracking-[0.06em] text-muted uppercase">
-                        {STATUS_LABEL[project.status] ?? project.status}
-                      </span>
-                    </div>
-                    <p className="mt-1.5 line-clamp-2 text-[13px] leading-relaxed text-secondary">
-                      {project.summary}
-                    </p>
-                    {children.length > 0 && (
-                      <p className="mt-2.5 text-[11.5px] text-muted">
-                        {children.length} sub-project
-                        {children.length === 1 ? "" : "s"}
+                  <div className="project-card ease-base flex h-full flex-col rounded-code border border-border-subtle bg-white/[0.018] transition-[background-color,transform] duration-200 hover:bg-white/[0.035]">
+                    <Link
+                      href={`/p/${project.slug}`}
+                      className="project-card-link block flex-1 rounded-code"
+                    >
+                      <div className="flex items-baseline justify-between gap-3">
+                        <span className="text-[14px] font-medium text-primary">
+                          {project.name}
+                        </span>
+                        <span className="shrink-0 text-[10.5px] tracking-[0.06em] text-muted uppercase">
+                          {STATUS_LABEL[project.status] ?? project.status}
+                        </span>
+                      </div>
+                      <p className="mt-1.5 line-clamp-2 text-[13px] leading-relaxed text-secondary">
+                        {project.summary}
                       </p>
-                    )}
-                  </Link>
+                      {children.length > 0 && (
+                        <p className="mt-2.5 text-[11.5px] text-muted">
+                          {children.length} sub-project
+                          {children.length === 1 ? "" : "s"}
+                        </p>
+                      )}
+                    </Link>
+                    {canEdit && <DeleteProjectButton project={{ id: project.id, slug: project.slug, name: project.name }} />}
+                  </div>
                 </li>
               );
             })}
