@@ -221,8 +221,8 @@ export function ReadingPreferences() {
           <fieldset className="prefs-group">
             <legend>Reading aids</legend>
             <div className="prefs-toggles">
-              <Toggle name="paragraphFocus" label="Paragraph focus" hint="Fade everything but what you're reading" />
-              <Toggle name="ruler" label="Reading ruler" hint="A band that follows your pointer line by line" />
+              <Toggle name="paragraphFocus" label="Paragraph focus" hint="Fades everything except the paragraph under your mouse" />
+              <Toggle name="ruler" label="Reading ruler" hint="Point at the text: the line you're on stays clear, the rest dims" />
               <Toggle name="autoHideHeader" label="Hide header while reading" hint="Slides away as you scroll down" />
             </div>
           </fieldset>

@@ -36,6 +36,26 @@ export async function deleteProject(workspaceId: string, slug: string, id: strin
   return row;
 }
 
+export type ProjectDetails = {
+  summary?: string;
+  stack?: string[];
+  repositoryUrl?: string | null;
+  entrypoints?: string[];
+  conventions?: string[];
+  openQuestions?: string[];
+  glossary?: Record<string, string>;
+};
+
+/** The descriptive fields shown on the overview; slug and name never change here. */
+export async function updateProjectDetails(workspaceId: string, slug: string, details: ProjectDetails) {
+  const [row] = await db
+    .update(projects)
+    .set({ ...details, updatedAt: new Date() })
+    .where(and(eq(projects.workspaceId, workspaceId), eq(projects.slug, slug)))
+    .returning({ id: projects.id });
+  return row ?? null;
+}
+
 /** Sections with their pages, ordered — the shape the sidebar needs. */
 export async function getProjectTree(projectId: string) {
   const [sectionRows, pageRows] = await Promise.all([

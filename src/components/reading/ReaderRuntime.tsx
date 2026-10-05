@@ -86,10 +86,19 @@ export function ReaderRuntime({
 
       if (root.classList.contains("paragraph-focus")) {
         const body = content.querySelector(".doc-body, .readme-document");
-        let next: Element | null = null;
-        for (const block of body?.children ?? []) {
-          const box = block.getBoundingClientRect();
-          if (box.bottom >= line) { next = block; break; }
+        let next: Element | null = current;
+        if (pointer) {
+          // Follow the mouse. Over a gap between blocks, or outside the
+          // article, keep whatever is lit rather than flickering.
+          const hit = document.elementFromPoint(pointer.x, pointer.y);
+          const block = hit && body?.contains(hit) ? [...body.children].find((child) => child.contains(hit)) : undefined;
+          if (block) next = block;
+        } else {
+          // Touch screens have no pointer to follow: use the reading line.
+          next = null;
+          for (const block of body?.children ?? []) {
+            if (block.getBoundingClientRect().bottom >= line) { next = block; break; }
+          }
         }
         if (next !== current) {
           current?.removeAttribute("data-current");
@@ -120,6 +129,15 @@ export function ReaderRuntime({
     const onIntent = () => {
       moved = true;
     };
+    // Last mouse position, for paragraph focus. Scrolling under a still
+    // mouse changes what it's over, so scroll re-runs the same lookup.
+    let pointer: { x: number; y: number } | null = null;
+    const onPointer = (event: PointerEvent) => {
+      if (event.pointerType === "touch") return;
+      pointer = { x: event.clientX, y: event.clientY };
+      if (root.classList.contains("paragraph-focus")) schedule();
+    };
+    window.addEventListener("pointermove", onPointer, { passive: true });
     const INTENT = ["wheel", "touchmove", "keydown", "pointerdown"] as const;
     INTENT.forEach((type) => window.addEventListener(type, onIntent, { passive: true }));
 
@@ -134,6 +152,7 @@ export function ReaderRuntime({
       window.removeEventListener("scroll", schedule);
       window.removeEventListener("resize", schedule);
       INTENT.forEach((type) => window.removeEventListener(type, onIntent));
+      window.removeEventListener("pointermove", onPointer);
       if (moved) update(pageId, { ...last, done: last.progress >= DONE_AT });
       flushProgress();
       current?.removeAttribute("data-current");
@@ -228,8 +247,9 @@ export function ReaderRuntime({
 }
 
 /**
- * A soft band that follows the pointer across the article, to help keep your
- * place in long lines. Pointer devices only; hidden when the pointer leaves.
+ * A reading window: the line under the mouse stays clear while everything
+ * above and below it dims, so the eye can't slip to the wrong line. Mouse
+ * only; it fades out when the pointer leaves the article.
  */
 function ReadingRuler() {
   const band = useRef<HTMLDivElement>(null);
@@ -237,24 +257,39 @@ function ReadingRuler() {
     if (!window.matchMedia("(hover: hover)").matches) return;
     const content = document.querySelector<HTMLElement>(".reading-content");
     if (!content) return;
-    const onMove = (event: PointerEvent) => {
+    let last: { x: number; y: number } | null = null;
+
+    const place = () => {
       const el = band.current;
-      if (!el || !document.documentElement.dataset.ruler) return;
+      if (!el) return;
+      const on = document.documentElement.hasAttribute("data-ruler");
       const rect = content.getBoundingClientRect();
-      const inside = event.clientX >= rect.left - 40 && event.clientX <= rect.right + 40
-        && event.clientY >= rect.top && event.clientY <= rect.bottom;
-      el.style.opacity = inside ? "1" : "0";
-      if (!inside) return;
-      const lineHeight = parseFloat(getComputedStyle(content.firstElementChild ?? content).lineHeight) || 28;
-      el.style.left = `${rect.left - 12}px`;
-      el.style.width = `${rect.width + 24}px`;
-      el.style.height = `${lineHeight * 1.5}px`;
-      el.style.transform = `translateY(${event.clientY - lineHeight * 0.75}px)`;
+      const inside = on && last !== null
+        && last.x >= rect.left - 48 && last.x <= rect.right + 48
+        && last.y >= rect.top && last.y <= rect.bottom;
+      el.dataset.visible = String(inside);
+      if (!inside || !last) return;
+      const body = content.querySelector(".doc-body, .readme-document") ?? content;
+      const lineHeight = parseFloat(getComputedStyle(body).lineHeight) || 28;
+      const height = lineHeight * 1.3;
+      el.style.left = `${rect.left - 14}px`;
+      el.style.width = `${rect.width + 28}px`;
+      el.style.height = `${height}px`;
+      el.style.transform = `translateY(${last.y - height / 2}px)`;
+    };
+    const onMove = (event: PointerEvent) => {
+      if (event.pointerType === "touch") return;
+      last = { x: event.clientX, y: event.clientY };
+      place();
     };
     window.addEventListener("pointermove", onMove, { passive: true });
-    return () => window.removeEventListener("pointermove", onMove);
+    window.addEventListener("scroll", place, { passive: true });
+    return () => {
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("scroll", place);
+    };
   }, []);
-  return <div ref={band} className="reading-ruler" aria-hidden />;
+  return <div ref={band} className="reading-ruler" data-visible="false" aria-hidden />;
 }
 
 /** Quiet acknowledgement at the end of the article once it has been read. */

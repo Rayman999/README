@@ -13,6 +13,7 @@ import { LearningPaths } from "@/components/documents/LearningPaths";
 import { ReadMark } from "@/components/reading/ReadMarks";
 import { ChapterProgress, ReadingMap, StartCard, type OverviewPage, type OverviewSection } from "@/components/projects/Overview";
 import { formatMinutes } from "@/lib/reading/format";
+import { OverviewEditor } from "@/components/projects/OverviewEditor";
 import type { NavSection } from "@/components/shell/types";
 
 export const dynamic = "force-dynamic";
@@ -135,11 +136,28 @@ export default async function ProjectPage({
   const totalMinutes = readingOrder.reduce((sum, page) => sum + page.minutes, 0);
   const lastUpdated = allMeta.reduce((latest, meta) => (meta.updatedAt > latest ? meta.updatedAt : latest), project.updatedAt);
   const glossary = Object.entries(project.glossary ?? {}).sort(([a], [b]) => a.localeCompare(b));
+  const missing = [
+    ...(glossary.length ? [] : ["a glossary"]),
+    ...(project.entrypoints.length ? [] : ["where the code starts"]),
+    ...(project.conventions.length ? [] : ["house rules"]),
+  ];
+  const details = {
+    summary: project.summary,
+    stack: project.stack,
+    repositoryUrl: project.repositoryUrl,
+    entrypoints: project.entrypoints,
+    conventions: project.conventions,
+    openQuestions: project.openQuestions,
+    glossary: project.glossary ?? {},
+  };
   const neighbours = [
     ...(overview.parent ? [{ ...overview.parent, relation: "Part of" }] : []),
     ...overview.children.map((child) => ({ ...child, relation: "Sub-project" })),
     ...overview.related.map((entry) => ({ ...entry, relation: "Related" })),
   ];
+
+  const hasSide = glossary.length > 0 || project.entrypoints.length > 0 || project.conventions.length > 0
+    || project.openQuestions.length > 0 || neighbours.length > 0 || (editor && missing.length > 0);
 
   async function signOutAction() {
     "use server";
@@ -172,7 +190,7 @@ export default async function ProjectPage({
             </p>
             <h1 className="ov-title">{project.name}</h1>
             <p className="ov-summary">{project.summary}</p>
-            {(project.stack.length > 0 || project.repositoryUrl) && (
+            {(project.stack.length > 0 || project.repositoryUrl || editor) && (
               <div className="ov-chips">
                 {project.stack.map((item) => <span key={item} className="ov-chip">{item}</span>)}
                 {project.repositoryUrl && (
@@ -180,25 +198,28 @@ export default async function ProjectPage({
                     {project.repositoryUrl.replace(/^https?:\/\/(www\.)?/, "")} ↗
                   </a>
                 )}
+                {editor && <OverviewEditor project={project.slug} details={details} />}
               </div>
             )}
           </div>
           <StartCard pages={readingOrder} />
         </header>
 
-        {/* Stats */}
+        {/* Stats: only the ones that say something about this project. */}
         <dl className="ov-stats">
           <div><dt>Pages</dt><dd>{readingOrder.length}</dd></div>
           <div><dt>To read it all</dt><dd>{formatMinutes(totalMinutes)}</dd></div>
-          <div><dt>Sections</dt><dd>{tree.sections.length}</dd></div>
+          {tree.sections.length > 0 && <div><dt>Sections</dt><dd>{tree.sections.length}</dd></div>}
           <div><dt>Last updated</dt><dd>{ago(lastUpdated)}</dd></div>
-          <div>
-            <dt>Contributors</dt>
-            <dd>
-              {overview.contributors.people || "—"}
-              {overview.contributors.agentEdits > 0 && <small> + {overview.contributors.agentEdits} agent edit{overview.contributors.agentEdits === 1 ? "" : "s"}</small>}
-            </dd>
-          </div>
+          {(overview.contributors.people > 0 || overview.contributors.agentEdits > 0) && (
+            <div>
+              <dt>Contributors</dt>
+              <dd>
+                {overview.contributors.people > 0 ? `${overview.contributors.people} ${overview.contributors.people === 1 ? "person" : "people"}` : ""}
+                {overview.contributors.agentEdits > 0 && <small>{overview.contributors.people > 0 ? " + " : ""}{overview.contributors.agentEdits} agent edit{overview.contributors.agentEdits === 1 ? "" : "s"}</small>}
+              </dd>
+            </div>
+          )}
         </dl>
 
         {changes.length > 0 && (
@@ -221,20 +242,24 @@ export default async function ProjectPage({
           </section>
         )}
 
-        <div className="ov-body">
+        <div className="ov-body" data-side={hasSide}>
           <div className="ov-main">
             <div className="ov-contents-head">
               <h2 id="contents">Contents</h2>
               {editor && <Link href={`/compose/${project.slug}`} className="toolbar-button">+ New document</Link>}
             </div>
             <ReadingMap sections={chapters} />
-            {editor && <SectionManager project={project.slug} sections={tree.sections.map((entry) => ({ id: entry.id, slug: entry.slug, title: entry.title, position: entry.position, pageCount: entry.pages.length }))} />}
 
             {readingOrder.length === 0 ? (
               <div className="ov-empty">
                 <Icon path={ICONS.doc} size={16} />
                 <p>No pages yet. Guides, standards and system explanations will appear here as the team documents its work.</p>
               </div>
+            ) : tree.sections.length === 0 ? (
+              // No sections: one plain list, not a lone numbered chapter.
+              <ul className="ov-pages-flat">
+                {readingOrder.map((page) => <PageRow key={page.id} page={page} badge={changed.get(page.id)} />)}
+              </ul>
             ) : (
               <ol className="ov-chapters">
                 {chapters.filter((chapter) => chapter.pages.length > 0).map((chapter, index) => (
@@ -252,80 +277,88 @@ export default async function ProjectPage({
               </ol>
             )}
 
-            <div className="ov-paths">
-              <LearningPaths project={project.slug} paths={learningPaths} pages={readingOrder} editable={editor} />
-            </div>
+            {editor && (
+              <div className="ov-organise">
+                <SectionManager project={project.slug} sections={tree.sections.map((entry) => ({ id: entry.id, slug: entry.slug, title: entry.title, position: entry.position, pageCount: entry.pages.length }))} />
+              </div>
+            )}
+
+            {(learningPaths.length > 0 || editor) && (
+              <div className="ov-paths">
+                <LearningPaths project={project.slug} paths={learningPaths} pages={readingOrder} editable={editor} />
+              </div>
+            )}
           </div>
 
-          <aside className="ov-side" aria-label="Project reference">
-            {(glossary.length > 0 || editor) && (
-              <Panel title="Glossary" count={glossary.length || undefined}>
-                {glossary.length > 0 ? (
+          {hasSide && (
+            <aside className="ov-side" aria-label="Project reference">
+              {glossary.length > 0 && (
+                <Panel title="Glossary" count={glossary.length}>
                   <dl className="ov-glossary">
                     {glossary.slice(0, 8).map(([term, meaning]) => (
                       <div key={term}><dt>{term}</dt><dd>{meaning}</dd></div>
                     ))}
                   </dl>
-                ) : (
-                  <p className="ov-hint">Define the project&rsquo;s own terms here so newcomers can read without guessing.</p>
-                )}
-                {glossary.length > 8 && (
-                  <details className="ov-more">
-                    <summary>All {glossary.length} terms</summary>
-                    <dl className="ov-glossary">
-                      {glossary.slice(8).map(([term, meaning]) => (
-                        <div key={term}><dt>{term}</dt><dd>{meaning}</dd></div>
-                      ))}
-                    </dl>
-                  </details>
-                )}
-              </Panel>
-            )}
+                  {glossary.length > 8 && (
+                    <details className="ov-more">
+                      <summary>All {glossary.length} terms</summary>
+                      <dl className="ov-glossary">
+                        {glossary.slice(8).map(([term, meaning]) => (
+                          <div key={term}><dt>{term}</dt><dd>{meaning}</dd></div>
+                        ))}
+                      </dl>
+                    </details>
+                  )}
+                </Panel>
+              )}
 
-            {(project.entrypoints.length > 0 || editor) && (
-              <Panel title="Where the code starts">
-                {project.entrypoints.length > 0 ? (
+              {project.entrypoints.length > 0 && (
+                <Panel title="Where the code starts">
                   <ul className="ov-entry">
                     {project.entrypoints.map((entry) => <li key={entry}><code>{entry}</code></li>)}
                   </ul>
-                ) : (
-                  <p className="ov-hint">List the files a newcomer should open first.</p>
-                )}
-              </Panel>
-            )}
+                </Panel>
+              )}
 
-            {(project.conventions.length > 0 || editor) && (
-              <Panel title="House rules" count={project.conventions.length || undefined}>
-                {project.conventions.length > 0 ? (
+              {project.conventions.length > 0 && (
+                <Panel title="House rules" count={project.conventions.length}>
                   <ul className="ov-list">{project.conventions.map((c, i) => <li key={i}>{c}</li>)}</ul>
-                ) : (
-                  <p className="ov-hint">Naming, error formats, units — rules anyone working here should follow.</p>
-                )}
-              </Panel>
-            )}
+                </Panel>
+              )}
 
-            {project.openQuestions.length > 0 && (
-              <Panel title="Still undecided" count={project.openQuestions.length}>
-                <ul className="ov-list">{project.openQuestions.map((q, i) => <li key={i}>{q}</li>)}</ul>
-              </Panel>
-            )}
+              {project.openQuestions.length > 0 && (
+                <Panel title="Still undecided" count={project.openQuestions.length}>
+                  <ul className="ov-list">{project.openQuestions.map((q, i) => <li key={i}>{q}</li>)}</ul>
+                </Panel>
+              )}
 
-            {neighbours.length > 0 && (
-              <Panel title="Connected projects">
-                <ul className="ov-neighbours">
-                  {neighbours.map((entry) => (
-                    <li key={`${entry.relation}-${entry.slug}`}>
-                      <Link href={`/p/${entry.slug}`}>
-                        <span className="ov-neighbour-relation">{entry.relation}</span>
-                        <span className="ov-neighbour-name">{entry.name}</span>
-                        <span className="ov-neighbour-summary">{entry.summary}</span>
-                      </Link>
-                    </li>
-                  ))}
-                </ul>
-              </Panel>
-            )}
-          </aside>
+              {neighbours.length > 0 && (
+                <Panel title="Connected projects">
+                  <ul className="ov-neighbours">
+                    {neighbours.map((entry) => (
+                      <li key={`${entry.relation}-${entry.slug}`}>
+                        <Link href={`/p/${entry.slug}`}>
+                          <span className="ov-neighbour-relation">{entry.relation}</span>
+                          <span className="ov-neighbour-name">{entry.name}</span>
+                          <span className="ov-neighbour-summary">{entry.summary}</span>
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
+                </Panel>
+              )}
+
+              {editor && missing.length > 0 && (
+                <section className="ov-panel ov-panel-todo">
+                  <h2 className="ov-panel-title">Help newcomers</h2>
+                  <p className="ov-hint">
+                    Still missing: {missing.join(", ")}. These panels appear for readers once they have content.
+                  </p>
+                  <OverviewEditor project={project.slug} details={details} />
+                </section>
+              )}
+            </aside>
+          )}
         </div>
       </div>
     </AppShell>
