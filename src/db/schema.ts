@@ -1,5 +1,6 @@
 import { sql } from "drizzle-orm";
 import type { ReadmeDocument } from "@/lib/documents/schema";
+import type { ReadingPreset, ReadingPrefs } from "@/lib/reading/prefs";
 import {
   type AnyPgColumn,
   boolean,
@@ -9,6 +10,7 @@ import {
   jsonb,
   pgTable,
   primaryKey,
+  real,
   text,
   timestamp,
   uniqueIndex,
@@ -266,6 +268,49 @@ export const learningPaths = pgTable(
     updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
   },
   (t) => [index("learning_paths_project_idx").on(t.projectId)],
+);
+
+// ---------------------------------------------------------------------------
+// Personal reading data. Private to each person: never shown to anyone else,
+// never exposed to agents.
+// ---------------------------------------------------------------------------
+
+export const readerProfiles = pgTable("reader_profiles", {
+  userId: uuid("user_id").primaryKey().references(() => users.id, { onDelete: "cascade" }),
+  prefs: jsonb("prefs").$type<ReadingPrefs>().notNull(),
+  presets: jsonb("presets").$type<ReadingPreset[]>().notNull().default(sql`'[]'::jsonb`),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const readingProgress = pgTable(
+  "reading_progress",
+  {
+    userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    pageId: uuid("page_id").notNull().references(() => pages.id, { onDelete: "cascade" }),
+    progress: real("progress").notNull().default(0),
+    scrollY: integer("scroll_y").notNull().default(0),
+    done: boolean("done").notNull().default(false),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.userId, t.pageId] })],
+);
+
+// Anchored by quoted text plus a little surrounding context (the W3C text
+// quote selector), so a highlight survives edits elsewhere on the page.
+export const highlights = pgTable(
+  "highlights",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    pageId: uuid("page_id").notNull().references(() => pages.id, { onDelete: "cascade" }),
+    quote: text("quote").notNull(),
+    prefix: text("prefix").notNull().default(""),
+    suffix: text("suffix").notNull().default(""),
+    note: text("note"),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => [index("highlights_user_page_idx").on(t.userId, t.pageId)],
 );
 
 // ---------------------------------------------------------------------------

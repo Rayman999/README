@@ -57,6 +57,13 @@
       "when": 1788802453097,
       "tag": "0007_mature_reavers",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1791236199666,
+      "tag": "0008_reader_profiles",
+      "breakpoints": true
     }
   ]
 }

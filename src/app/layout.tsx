@@ -1,9 +1,12 @@
 import type { Metadata, Viewport } from "next";
-import { Inter, JetBrains_Mono, Literata } from "next/font/google";
+import { Atkinson_Hyperlegible, Inter, JetBrains_Mono, Literata } from "next/font/google";
 import "./globals.css";
 import "@/components/documents/documents.css";
+import { auth } from "@/auth";
 import { RouteTransition } from "@/components/shell/RouteTransition";
-import { PREFS_SCRIPT } from "@/lib/reading/prefs";
+import { ReaderBoot } from "@/components/reading/ReadingPreferences";
+import { prefsScript } from "@/lib/reading/prefs";
+import { getReaderProfile } from "@/lib/reading/server";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -16,6 +19,13 @@ const literata = Literata({
   subsets: ["latin"],
   style: ["normal", "italic"],
   axes: ["opsz"],
+});
+
+const atkinson = Atkinson_Hyperlegible({
+  variable: "--font-atkinson",
+  subsets: ["latin"],
+  weight: ["400", "700"],
+  style: ["normal", "italic"],
 });
 
 const jetbrainsMono = JetBrains_Mono({
@@ -35,26 +45,30 @@ export const viewport: Viewport = {
   ],
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const session = await auth();
+  const saved = session?.user?.id ? await getReaderProfile(session.user.id) : null;
+
   return (
-    // The pre-paint script sets theme and reading attributes on <html>, so
-    // React will see attributes it didn't render.
-    // Font variables live on <html> so tokens declared on :root can resolve them.
+    // Font variables live on <html> so tokens declared on :root can resolve
+    // them. The pre-paint script sets theme and reading attributes on <html>,
+    // so React will see attributes it didn't render.
     <html
       lang="en"
       data-theme="graphite"
-      className={`${inter.variable} ${literata.variable} ${jetbrainsMono.variable}`}
+      className={`${inter.variable} ${literata.variable} ${atkinson.variable} ${jetbrainsMono.variable}`}
       suppressHydrationWarning
     >
       <head>
-        <script dangerouslySetInnerHTML={{ __html: PREFS_SCRIPT }} />
+        <script dangerouslySetInnerHTML={{ __html: prefsScript(saved, Boolean(session?.user)) }} />
       </head>
       <body className="antialiased">
         <a href="#main-content" className="skip-link">Skip to content</a>
+        <ReaderBoot />
         <RouteTransition>{children}</RouteTransition>
       </body>
     </html>

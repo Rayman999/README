@@ -28,7 +28,7 @@ The product exists to be read. Every rule here serves one goal: a reader should 
 
 > A quiet, matte reading room. Neutral greys, one softly raised page, generous space, and nothing that competes with the words.
 
-Graphite (dark) is the default and the identity. Paper (light) is the same design printed on a light ground, for daytime reading and for readers who find light-on-dark text blurry. Both are strictly neutral — never blue-, green- or purple-tinted.
+Graphite (dark) is the default and the identity. Paper (light) is the same design printed on a light ground, for daytime reading and for readers who find light-on-dark text blurry. Both are strictly neutral — never blue-, green- or purple-tinted. Dusk, the night theme, is the one warm exception.
 
 There is **no accent colour**. Emphasis is brightness, weight, size and space. If something needs to stand out, make it brighter or give it room; don't give it a hue.
 
@@ -78,17 +78,29 @@ Shadows: none on Graphite (nothing is darker than the shell to cast onto), a sof
 
 ---
 
+**Dusk** is the one deliberate exception to "neutral": a warm, dim theme with less blue light and gentler contrast, for reading at night. Its values live in `globals.css` next to the other two.
+
+**Highlighter** is the only other tint: a soft, desaturated amber (`--highlight-bg`, `--highlight-active`) per theme, because a marker has to be visible to be useful. It is used for highlights, the "new since your last visit" badge and nothing else.
+
 ## 4. Reading preferences
 
-Set from the **Aa** menu in the header, stored per browser, and applied before first paint as attributes on `<html>` so there is never a flash of the wrong theme.
+Set from the **Aa** menu in the header. Saved to the reader's account (`reader_profiles`) so they follow them to any device, cached in the browser, and applied before first paint as attributes on `<html>`, so there is never a flash of the wrong theme. Personal only — there are no workspace-wide defaults.
 
-| Attribute | Values | Effect |
+| Setting | Values | Effect |
 |---|---|---|
-| `data-theme` | `graphite` (default), `paper`; "Auto" resolves from the system | Swaps the token set |
-| `data-face` | `sans` (Inter, default), `serif` (Literata) | Body text face; headings stay sans |
+| `data-theme` | `graphite` (default), `dusk`, `paper`; "Auto" resolves from the system | Swaps the token set |
+| `data-face` | `sans` (Inter, default), `serif` (Literata), `readable` (Atkinson Hyperlegible) | Body face; headings stay sans except in `readable`, where the whole article uses it |
 | `data-size` | `s` 15.5px, `m` 17px, `l` 18.5px, `xl` 20px | `--reading-size` |
 | `data-measure` | `narrow` 31em, `standard` 36em, `wide` 43em | `--measure`; in `em` so characters per line stay constant at any size |
+| `data-leading` | `compact` 1.55, `normal` (per face), `airy` 1.95 | `--reading-leading` |
 | `.reading-focus` | on/off (`F`) | Hides both side rails |
+| `.paragraph-focus` | on/off | Every block except the one at the reading line fades to 32% |
+| `data-ruler` | on/off | A soft band follows the pointer line by line |
+| auto-hide header | on/off | Header slides away on scroll down, returns on scroll up |
+
+**Presets** apply a whole set at once. Built in: Night, Deep focus, Daylight, Easy reading. Readers can save up to 12 of their own.
+
+**Skim** (`S`, or the toolbar) shows only headings and the opening lines of each section. It lasts for the browser session and is never saved, so a page never silently hides paragraphs on a later visit. Reaching the end while skimming doesn't mark a page read.
 
 ---
 
@@ -156,15 +168,25 @@ Boxed blocks (code, tables, callouts, charts) extend 18px into the page margin o
 
 ## 8. Momentum
 
-These are what make the wiki pleasant to keep reading. Progress is stored only in the reader's browser.
+These are what make the wiki pleasant to keep reading. Progress is saved to the reader's account (`reading_progress`), private to them and never shown to agents.
 
 - **Progress line** under the header, filling as the article is read.
 - **Contents rail** fills down to the current section; passed sections dim, the current one is brightest; minutes left underneath.
 - **Read marks**: a check beside finished pages and a small progress ring beside partly read ones, in the nav and on the project page.
 - **Resume**: returning to a half-read page offers "Continue where you left off" with the section name.
 - **Finish and continue**: reaching the end marks the page read and offers the next page, with its description, as the obvious next step.
-- **Project progress**: "3 of 12 read" and a single "Continue reading" / "Read next" card at the top of each project.
-- **Keys**: `[` and `]` for previous and next page, `F` for focus mode, `Ctrl K` for search.
+- **Highlights and notes**: select text → Highlight or Add note. Anchored by quote plus surrounding text so they survive edits elsewhere, painted with the CSS Custom Highlight API so the article DOM is never modified, and collected on **/highlights**.
+- **Keys**: `[` and `]` for previous and next page, `F` for focus mode, `S` for skim, `Ctrl K` for search.
+
+### The project overview
+
+A cover page and table of contents for someone new to the project — wider than a reading page, with no right rail:
+
+1. **Cover** — status and version, a large title, the summary in the reading face, stack and repository chips; beside it a progress ring with the single best next step (Start here / Continue / Read next).
+2. **Stats strip** — pages, time to read it all, sections, last updated, contributors.
+3. **New since your last visit** — pages edited after you last read them, and pages added since your last visit.
+4. **Contents** — a reading map (one bar, a segment per section sized by reading time, filled by what you've read), then numbered chapters with page rows, minutes and read marks.
+5. **Reference column** — glossary, where the code starts (entry points), house rules (conventions), open questions, connected projects (parent, sub-projects, related). Empty panels are hidden from readers and shown with a hint to editors.
 
 ---
 
@@ -215,7 +237,7 @@ Slow, small, deliberate: 150–250ms on `--ease`. Animate opacity, background al
 
 ## 14. Prohibited
 
-- Any accent hue — emphasis is brightness and space
+- Any accent hue — emphasis is brightness and space (the Dusk theme and the highlighter tint are the only, documented, exceptions)
 - Blue-, green- or purple-tinted neutrals
 - Pure `#000` grounds or pure `#FFF` text on dark
 - `white/` or `black/` utilities for tints (use `ink/`)

@@ -20,7 +20,7 @@ export function Header({
 }) {
   return (
     <header
-      className="fixed top-0 right-0 left-0 z-30 flex items-center gap-4 border-b border-border-faint bg-shell px-4"
+      className="app-header fixed top-0 right-0 left-0 z-30 flex items-center gap-4 border-b border-border-faint bg-shell px-4"
       style={{ height: HEADER_H }}
     >
       {onMenu && (
@@ -44,7 +44,8 @@ export function Header({
       <div className="ml-auto"><SearchCommand /></div>
       <nav aria-label="Workspace" className="hidden items-center gap-4 text-sm text-secondary md:flex">
         <Link href="/" className="hover:text-primary">Library</Link>
-        <Link href="/document-guide" className="hidden hover:text-primary sm:block">Writing guide</Link>
+        <Link href="/highlights" className="hover:text-primary">Highlights</Link>
+        <Link href="/document-guide" className="hidden hover:text-primary lg:block">Writing guide</Link>
       </nav>
       <div className="flex shrink-0 items-center gap-1">
         <ReadingPreferences />

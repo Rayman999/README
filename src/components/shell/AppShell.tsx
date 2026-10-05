@@ -8,6 +8,7 @@ import { Toc } from "./Toc";
 import { Header } from "./Header";
 import { Icon, ICONS, HEADER_H } from "./icons";
 import { ReadMark } from "@/components/reading/ReadMarks";
+import { ReadingRecordsProvider, type PageRecord } from "@/components/reading/ReadingRecords";
 
 // --- left navigation ------------------------------------------------------
 
@@ -58,6 +59,12 @@ function SidebarNav({
           <Icon path={ICONS.chevron} size={10} />
         </span>
         All projects
+      </Link>
+      <Link
+        href="/highlights"
+        className="ease-base mb-4 -mt-2 flex items-center gap-1.5 px-2 text-[11.5px] text-muted transition-colors duration-200 hover:text-secondary md:hidden"
+      >
+        Your highlights
       </Link>
 
       {projectName && (
@@ -128,7 +135,7 @@ function SidebarNav({
                         <span
                           className={`inline-flex w-[14px] shrink-0 justify-center ${active ? "text-tertiary" : "text-muted"}`}
                         >
-                          <ReadMark href={page.href} fallback={<Icon path={ICONS.doc} />} />
+                          <ReadMark pageId={page.id} fallback={<Icon path={ICONS.doc} />} />
                         </span>
                         <span className="truncate">{page.title}</span>
                       </Link>
@@ -146,6 +153,8 @@ function SidebarNav({
 
 // --- shell ----------------------------------------------------------------
 
+const EMPTY_PROGRESS: Record<string, PageRecord> = {};
+
 export function AppShell({
   sections,
   currentHref,
@@ -154,6 +163,7 @@ export function AppShell({
   projectHref,
   signOutAction,
   userEmail,
+  progress = EMPTY_PROGRESS,
   children,
 }: {
   sections: NavSection[];
@@ -163,6 +173,8 @@ export function AppShell({
   projectHref?: string;
   signOutAction?: () => Promise<void>;
   userEmail?: string | null;
+  /** This reader's progress through the project's pages, keyed by page id. */
+  progress?: Record<string, PageRecord>;
   children: ReactNode;
 }) {
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -174,6 +186,7 @@ export function AppShell({
   }, []);
 
   return (
+    <ReadingRecordsProvider initial={progress}>
     <div className="min-h-screen bg-base">
       <Header
         onMenu={() => setDrawerOpen(true)}
@@ -207,8 +220,9 @@ export function AppShell({
         {/* Content column — the only elevated object on screen. */}
         <main id="main-content" tabIndex={-1} className="min-w-0 flex-1 px-5 py-8 lg:px-8">{children}</main>
 
-        {/* Right TOC — the quietest region. Flat on --bg-base. */}
-        <aside
+        {/* Right TOC — the quietest region. Flat on --bg-base. Pages without
+            an outline (the project overview) get the width back instead. */}
+        {toc.length > 0 && <aside
           className="reading-rail hidden shrink-0 py-8 pr-5 pl-3 xl:block"
           style={{
             width: 232,
@@ -219,7 +233,7 @@ export function AppShell({
           }}
         >
           <Toc entries={toc} />
-        </aside>
+        </aside>}
       </div>
 
       {/* Mobile drawer */}
@@ -232,5 +246,6 @@ export function AppShell({
           projectName={projectName} projectHref={projectHref} />
       </MotionDialog>
     </div>
+    </ReadingRecordsProvider>
   );
 }

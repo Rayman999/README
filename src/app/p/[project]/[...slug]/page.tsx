@@ -13,7 +13,9 @@ import { documentHeadings, type ReadmeDocument } from "@/lib/documents/schema";
 import { DocumentRenderer } from "@/components/documents/DocumentRenderer";
 import { PageActions } from "@/components/documents/PageActions";
 import { PageHistory } from "@/components/documents/PageHistory";
-import { FocusToggle } from "@/components/reading/ReadingPreferences";
+import { FocusToggle, SkimToggle } from "@/components/reading/ReadingPreferences";
+import { Highlights } from "@/components/reading/Highlights";
+import { getProgressForProject, listHighlightsForPage } from "@/lib/reading/server";
 import { CompletionNote, ReaderRuntime } from "@/components/reading/ReaderRuntime";
 import { InlineOutline } from "@/components/shell/Toc";
 import { canWrite } from "@/lib/api/context";
@@ -83,15 +85,19 @@ export default async function DocPage({
     redirect(canonicalHref);
   }
 
-  const [tree, { html, headings }] = await Promise.all([
+  const userId = session.user.id!;
+  const [tree, { html, headings }, progress, highlights] = await Promise.all([
     getProjectTree(project.id),
     page.document ? Promise.resolve({ html: "", headings: documentHeadings(page.document) }) : renderMarkdown(page.body),
+    getProgressForProject(userId, project.id),
+    listHighlightsForPage(userId, page.id),
   ]);
 
   const navSections: NavSection[] = tree.sections.map((s) => ({
     slug: s.slug,
     title: s.title,
     pages: s.pages.map((p) => ({
+      id: p.id,
       slug: p.slug,
       title: p.title,
       href: `${projectHref}/${s.slug}/${p.slug}`,
@@ -99,7 +105,7 @@ export default async function DocPage({
   }));
   if (tree.loosePages.length > 0) navSections.push({
     slug: "unsectioned", title: "Pages",
-    pages: tree.loosePages.map((p) => ({ slug: p.slug, title: p.title, href: `${projectHref}/${p.slug}` })),
+    pages: tree.loosePages.map((p) => ({ id: p.id, slug: p.slug, title: p.title, href: `${projectHref}/${p.slug}` })),
   });
 
   const toc: TocEntry[] = headings.map((h) => ({ id: h.id, text: h.text, level: h.level }));
@@ -131,10 +137,11 @@ export default async function DocPage({
       toc={toc}
       signOutAction={signOutAction}
       userEmail={session.user.email}
+      progress={progress}
     >
       <ReaderRuntime
-        key={canonicalHref}
-        href={canonicalHref}
+        key={page.id}
+        pageId={page.id}
         minutes={minutes}
         previousHref={previous?.href}
         nextHref={next?.href}
@@ -167,6 +174,7 @@ export default async function DocPage({
               {page.authorType === "agent" && <span>Written by an agent</span>}
             </div>
             <div className="reader-tools">
+              <SkimToggle />
               <FocusToggle />
               <PageHistory project={project.slug} page={page.slug} />
               {editor && (
@@ -201,8 +209,10 @@ export default async function DocPage({
           )}
         </div>
 
+        <Highlights key={page.id} pageId={page.id} initial={highlights} />
+
         <footer className="reader-end">
-          <CompletionNote />
+          <CompletionNote pageId={page.id} />
           {next ? (
             <Link href={next.href} className="up-next">
               <span className="up-next-label">

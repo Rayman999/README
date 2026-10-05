@@ -1,4 +1,5 @@
 export type NavPage = {
+  id: string;
   slug: string;
   title: string;
   href: string;

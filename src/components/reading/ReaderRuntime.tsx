@@ -3,14 +3,9 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 import { getPrefs, setPrefs } from "@/lib/reading/prefs";
-import {
-  getLive,
-  getRecord,
-  getServerLive,
-  saveRecord,
-  setLive,
-  subscribeLive,
-} from "@/lib/reading/state";
+import { getSkim, setSkim } from "@/lib/reading/skim";
+import { getLive, getServerLive, setLive, subscribeLive } from "@/lib/reading/state";
+import { flushProgress, useReadingRecords } from "./ReadingRecords";
 
 const DONE_AT = 0.95;
 
@@ -18,6 +13,10 @@ function isTyping(target: EventTarget | null) {
   const el = target as HTMLElement | null;
   if (!el) return false;
   return el.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName);
+}
+
+function prefersReducedMotion() {
+  return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 }
 
 /** The heading a reader was last under, so "resume" can say where it goes. */
@@ -35,33 +34,40 @@ function headingAbove(y: number) {
 
 /**
  * Everything that makes a page feel alive while it is being read: the
- * progress line, remembering position, marking it read, resume, keyboard
- * paging and copy buttons on code. Renders only fixed-position UI.
+ * progress line, saving position and marking it read, resume, paragraph
+ * focus, the auto-hiding header, keyboard shortcuts and copy buttons on code.
+ * Renders only fixed-position UI.
  */
 export function ReaderRuntime({
-  href,
+  pageId,
   minutes,
   previousHref,
   nextHref,
 }: {
-  href: string;
+  pageId: string;
   minutes: number;
   previousHref?: string;
   nextHref?: string;
 }) {
   const router = useRouter();
+  const { records, update } = useReadingRecords();
   const bar = useRef<HTMLDivElement>(null);
   const [resume, setResume] = useState<{ y: number; label: string | null } | null>(null);
+  // Captured once: the position this reader left the page at last time.
+  const [arrival] = useState(() => records[pageId]);
 
-  // Progress tracking.
+  // Progress, paragraph focus and the auto-hiding header all follow scroll.
   useEffect(() => {
     const content = document.querySelector<HTMLElement>(".reading-content");
     if (!content) return;
+    const root = document.documentElement;
     let frame = 0;
     let lastSave = 0;
     let last = { progress: 0, y: 0 };
-    // Nothing is saved until the reader scrolls, so arriving at the top of a
-    // page never overwrites the position they left it at.
+    let lastScrollY = window.scrollY;
+    let current: Element | null = null;
+    // Only real input counts as the reader moving; the router's own scroll
+    // resets on arrival and departure don't.
     let moved = false;
 
     const measure = () => {
@@ -69,65 +75,78 @@ export function ReaderRuntime({
       // During a client navigation the router removes this article and resets
       // scroll before this component unmounts (and before the URL changes);
       // that reset must not be recorded as the reader's position.
-      if (!content.isConnected || decodeURI(window.location.pathname) !== href) return;
+      if (!content.isConnected) return;
+
       const rect = content.getBoundingClientRect();
       const line = window.innerHeight * 0.35;
-      const atBottom =
-        window.scrollY + window.innerHeight >= document.documentElement.scrollHeight - 4;
-      const progress = atBottom
-        ? 1
-        : Math.max(0, Math.min(1, (line - rect.top) / Math.max(1, rect.height)));
+      const atBottom = window.scrollY + window.innerHeight >= document.documentElement.scrollHeight - 4;
+      const progress = atBottom ? 1 : Math.max(0, Math.min(1, (line - rect.top) / Math.max(1, rect.height)));
       bar.current?.style.setProperty("--progress", String(progress));
       setLive({ progress, minutes });
-      last = { progress, y: Math.round(window.scrollY) };
 
+      if (root.classList.contains("paragraph-focus")) {
+        const body = content.querySelector(".doc-body, .readme-document");
+        let next: Element | null = null;
+        for (const block of body?.children ?? []) {
+          const box = block.getBoundingClientRect();
+          if (box.bottom >= line) { next = block; break; }
+        }
+        if (next !== current) {
+          current?.removeAttribute("data-current");
+          next?.setAttribute("data-current", "");
+          current = next;
+        }
+      }
+
+      if (getPrefs().autoHideHeader) {
+        const delta = window.scrollY - lastScrollY;
+        if (window.scrollY < 120 || delta < -6) root.classList.remove("header-hidden");
+        else if (delta > 6) root.classList.add("header-hidden");
+      }
+      lastScrollY = window.scrollY;
+
+      // Skimming collapses the page, so reaching the end proves nothing.
+      if (getSkim()) return;
+      last = { progress, y: Math.round(window.scrollY) };
       const now = Date.now();
       if (moved && (now - lastSave > 500 || progress >= DONE_AT)) {
         lastSave = now;
-        saveRecord(href, { progress, y: Math.round(window.scrollY), done: progress >= DONE_AT });
+        update(pageId, { ...last, done: progress >= DONE_AT });
       }
     };
     const schedule = () => {
       if (!frame) frame = requestAnimationFrame(measure);
     };
-    // Only real input counts as the reader moving; the router's own scroll
-    // resets on arrival and departure don't.
     const onIntent = () => {
       moved = true;
     };
     const INTENT = ["wheel", "touchmove", "keydown", "pointerdown"] as const;
     INTENT.forEach((type) => window.addEventListener(type, onIntent, { passive: true }));
-    const onScroll = schedule;
 
     measure();
     const observer = new ResizeObserver(schedule);
     observer.observe(content);
-    window.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("scroll", schedule, { passive: true });
     window.addEventListener("resize", schedule);
-    // Leaving mid-page shouldn't lose the last half-second of position.
-    const flush = () => {
-      if (moved) saveRecord(href, { ...last, done: last.progress >= DONE_AT });
-    };
-    window.addEventListener("pagehide", flush);
     return () => {
       cancelAnimationFrame(frame);
       observer.disconnect();
-      window.removeEventListener("scroll", onScroll);
+      window.removeEventListener("scroll", schedule);
       window.removeEventListener("resize", schedule);
-      window.removeEventListener("pagehide", flush);
       INTENT.forEach((type) => window.removeEventListener(type, onIntent));
-      flush();
+      if (moved) update(pageId, { ...last, done: last.progress >= DONE_AT });
+      flushProgress();
+      current?.removeAttribute("data-current");
+      root.classList.remove("header-hidden");
       setLive({ progress: 0, minutes: 0 });
     };
-  }, [href, minutes]);
+  }, [pageId, minutes, update]);
 
   // Offer to pick up where the reader left off.
   useEffect(() => {
     if (window.location.hash) return;
-    const record = getRecord(href);
-    if (!record || record.done || record.y < 600) return;
-    const y = record.y;
-    // Measure after layout settles so the heading lookup is accurate.
+    if (!arrival || arrival.done || arrival.y < 600) return;
+    const y = arrival.y;
     const frame = requestAnimationFrame(() => setResume({ y, label: headingAbove(y) }));
     const startY = window.scrollY;
     const onScroll = () => {
@@ -140,16 +159,18 @@ export function ReaderRuntime({
       window.clearTimeout(timer);
       window.removeEventListener("scroll", onScroll);
     };
-  }, [href]);
+  }, [arrival]);
 
-  // Keyboard paging and focus mode.
+  // Keyboard: paging, focus, skim.
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       if (event.ctrlKey || event.metaKey || event.altKey || isTyping(event.target)) return;
       if (document.querySelector("dialog[open]")) return;
+      const key = event.key.toLowerCase();
       if (event.key === "]" && nextHref) router.push(nextHref);
       else if (event.key === "[" && previousHref) router.push(previousHref);
-      else if (event.key === "f" || event.key === "F") setPrefs({ focus: !getPrefs().focus });
+      else if (key === "f") setPrefs({ focus: !getPrefs().focus });
+      else if (key === "s") setSkim(!getSkim());
       else if (event.key === "Escape" && getPrefs().focus) setPrefs({ focus: false });
       else return;
       event.preventDefault();
@@ -184,13 +205,13 @@ export function ReaderRuntime({
   return (
     <>
       <div ref={bar} className="reading-progress-bar" aria-hidden />
+      <ReadingRuler />
       {resume && (
         <div className="resume-pill" role="status">
           <button
             type="button"
             onClick={() => {
-              const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-              window.scrollTo({ top: resume.y, behavior: reduced ? "auto" : "smooth" });
+              window.scrollTo({ top: resume.y, behavior: prefersReducedMotion() ? "auto" : "smooth" });
               setResume(null);
             }}
           >
@@ -206,10 +227,41 @@ export function ReaderRuntime({
   );
 }
 
+/**
+ * A soft band that follows the pointer across the article, to help keep your
+ * place in long lines. Pointer devices only; hidden when the pointer leaves.
+ */
+function ReadingRuler() {
+  const band = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!window.matchMedia("(hover: hover)").matches) return;
+    const content = document.querySelector<HTMLElement>(".reading-content");
+    if (!content) return;
+    const onMove = (event: PointerEvent) => {
+      const el = band.current;
+      if (!el || !document.documentElement.dataset.ruler) return;
+      const rect = content.getBoundingClientRect();
+      const inside = event.clientX >= rect.left - 40 && event.clientX <= rect.right + 40
+        && event.clientY >= rect.top && event.clientY <= rect.bottom;
+      el.style.opacity = inside ? "1" : "0";
+      if (!inside) return;
+      const lineHeight = parseFloat(getComputedStyle(content.firstElementChild ?? content).lineHeight) || 28;
+      el.style.left = `${rect.left - 12}px`;
+      el.style.width = `${rect.width + 24}px`;
+      el.style.height = `${lineHeight * 1.5}px`;
+      el.style.transform = `translateY(${event.clientY - lineHeight * 0.75}px)`;
+    };
+    window.addEventListener("pointermove", onMove, { passive: true });
+    return () => window.removeEventListener("pointermove", onMove);
+  }, []);
+  return <div ref={band} className="reading-ruler" aria-hidden />;
+}
+
 /** Quiet acknowledgement at the end of the article once it has been read. */
-export function CompletionNote() {
+export function CompletionNote({ pageId }: { pageId: string }) {
   const live = useSyncExternalStore(subscribeLive, getLive, getServerLive);
-  const finished = live.progress >= DONE_AT;
+  const { records } = useReadingRecords();
+  const finished = live.progress >= DONE_AT || Boolean(records[pageId]?.done);
   return (
     <p className="completion-note" data-finished={finished} aria-live="polite">
       <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>

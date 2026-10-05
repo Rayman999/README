@@ -3,13 +3,17 @@ import { notFound, redirect } from "next/navigation";
 import { auth, signOut } from "@/auth";
 import { getWorkspace } from "@/lib/workspace";
 import { getProjectBySlug, getProjectTree, listLearningPaths } from "@/lib/projects";
+import { getProjectOverviewData } from "@/lib/project-overview";
+import { getProgressForProject } from "@/lib/reading/server";
 import { canWrite } from "@/lib/api/context";
 import { AppShell } from "@/components/shell/AppShell";
 import { Icon, ICONS } from "@/components/shell/icons";
 import { SectionManager } from "@/components/documents/SectionManager";
 import { LearningPaths } from "@/components/documents/LearningPaths";
-import { ProjectProgress, ReadMark } from "@/components/reading/ReadMarks";
-import type { NavSection, TocEntry } from "@/components/shell/types";
+import { ReadMark } from "@/components/reading/ReadMarks";
+import { ChapterProgress, ReadingMap, StartCard, type OverviewPage, type OverviewSection } from "@/components/projects/Overview";
+import { formatMinutes } from "@/lib/reading/format";
+import type { NavSection } from "@/components/shell/types";
 
 export const dynamic = "force-dynamic";
 
@@ -20,34 +24,42 @@ const STATUS_LABEL: Record<string, string> = {
   planned: "Planned",
 };
 
-function SectionHeading({ id, children }: { id: string; children: React.ReactNode }) {
-  return (
-    <h2 id={id} className="scroll-mt-24 text-[22px] font-semibold tracking-[-0.015em] text-heading">
-      {children}
-    </h2>
-  );
+const relative = new Intl.RelativeTimeFormat("en", { numeric: "auto" });
+function ago(date: Date) {
+  const days = Math.round((date.getTime() - Date.now()) / 86_400_000);
+  if (days > -1) return "today";
+  if (days > -30) return relative.format(days, "day");
+  if (days > -365) return relative.format(Math.round(days / 30), "month");
+  return relative.format(Math.round(days / 365), "year");
 }
 
-/** A quiet placeholder that says what the field is for, not what phase it is. */
-function EmptyHint({ children }: { children: React.ReactNode }) {
-  return (
-    <p className="mt-3 rounded-code border border-dashed border-border-subtle px-4 py-3 text-[13.5px] leading-relaxed text-muted">
-      {children}
-    </p>
-  );
-}
-
-function PageRow({ href, title, description }: { href: string; title: string; description: string }) {
+function PageRow({ page, badge }: { page: OverviewPage; badge?: string }) {
   return (
     <li>
-      <Link href={href} className="page-list-link ease-base transition-colors duration-200 hover:bg-state-hover">
-        <span className="page-list-mark">
-          <ReadMark href={href} fallback={<Icon path={ICONS.doc} />} />
+      <Link href={page.href} className="ov-page">
+        <span className="ov-page-mark">
+          <ReadMark pageId={page.id} fallback={<Icon path={ICONS.doc} />} />
         </span>
-        <span className="page-list-title">{title}</span>
-        {description && <span className="page-list-desc">{description}</span>}
+        <span className="ov-page-title">
+          {page.title}
+          {badge && <span className="ov-badge">{badge}</span>}
+        </span>
+        <span className="ov-page-minutes">{page.minutes} min</span>
+        {page.description && <span className="ov-page-desc">{page.description}</span>}
       </Link>
     </li>
+  );
+}
+
+function Panel({ title, children, count }: { title: string; children: React.ReactNode; count?: number }) {
+  return (
+    <section className="ov-panel">
+      <h2 className="ov-panel-title">
+        {title}
+        {count !== undefined && <span>{count}</span>}
+      </h2>
+      {children}
+    </section>
   );
 }
 
@@ -57,7 +69,7 @@ export default async function ProjectPage({
   params: Promise<{ project: string }>;
 }) {
   const session = await auth();
-  if (!session?.user) redirect("/login");
+  if (!session?.user?.id) redirect("/login");
 
   const { project: slug } = await params;
   const workspace = await getWorkspace();
@@ -66,44 +78,67 @@ export default async function ProjectPage({
   const project = await getProjectBySlug(workspace.id, slug);
   if (!project) notFound();
 
-  const [tree, learningPaths] = await Promise.all([
+  const [tree, learningPaths, overview, progress] = await Promise.all([
     getProjectTree(project.id),
     listLearningPaths(project.id),
+    getProjectOverviewData(project),
+    getProgressForProject(session.user.id, project.id),
   ]);
   const projectHref = `/p/${project.slug}`;
   const editor = canWrite(session.user.role);
 
-  const navSections: NavSection[] = tree.sections.map((section) => ({
-    slug: section.slug,
-    title: section.title,
-    pages: section.pages.map((page) => ({
-      slug: page.slug,
-      title: page.title,
-      href: `${projectHref}/${section.slug}/${page.slug}`,
-    })),
-  }));
-  if (tree.loosePages.length > 0) navSections.push({
-    slug: "unsectioned", title: "Pages",
-    pages: tree.loosePages.map((page) => ({ slug: page.slug, title: page.title, href: `${projectHref}/${page.slug}` })),
+  const toPage = (page: (typeof tree.loosePages)[number], href: string): OverviewPage => ({
+    id: page.id,
+    slug: page.slug,
+    href,
+    title: page.title,
+    description: page.description,
+    minutes: overview.pageStats[page.id]?.minutes ?? 1,
   });
 
-  // Reading order: sections in order, then loose pages — same as the sidebar.
-  const readingOrder = [
-    ...tree.sections.flatMap((section) => section.pages.map((page) => ({
-      slug: page.slug, title: page.title, description: page.description, href: `${projectHref}/${section.slug}/${page.slug}`,
-    }))),
-    ...tree.loosePages.map((page) => ({
-      slug: page.slug, title: page.title, description: page.description, href: `${projectHref}/${page.slug}`,
+  // Sections are the project's chapters, in order; loose pages close the book.
+  const chapters: OverviewSection[] = [
+    ...tree.sections.map((section) => ({
+      id: section.id,
+      slug: section.slug,
+      title: section.title,
+      pages: section.pages.map((page) => toPage(page, `${projectHref}/${section.slug}/${page.slug}`)),
     })),
+    ...(tree.loosePages.length
+      ? [{ id: "loose", slug: "more", title: tree.sections.length ? "More pages" : "Pages", pages: tree.loosePages.map((page) => toPage(page, `${projectHref}/${page.slug}`)) }]
+      : []),
   ];
-  const pageCount = readingOrder.length;
+  const readingOrder = chapters.flatMap((chapter) => chapter.pages);
+  const allMeta = [...tree.sections.flatMap((s) => s.pages), ...tree.loosePages];
 
-  const toc: TocEntry[] = [
-    { id: "pages", text: "Pages", level: 2 },
-    { id: "overview", text: "Overview", level: 2 },
-    { id: "conventions", text: "Conventions", level: 2 },
-    { id: "open-questions", text: "Open questions", level: 2 },
-    { id: "learning-paths", text: "Learning paths", level: 2 },
+  const navSections: NavSection[] = chapters.map((chapter) => ({
+    slug: chapter.slug,
+    title: chapter.title,
+    pages: chapter.pages.map((page) => ({ id: page.id, slug: page.href, title: page.title, href: page.href })),
+  }));
+
+  // "New since your last visit": pages changed after this reader last read
+  // them, and pages added since their most recent visit to the project.
+  const visits = Object.values(progress).map((record) => record.at);
+  const lastVisit = visits.length ? Math.max(...visits) : null;
+  type Change = { page: OverviewPage; kind: "New" | "Updated" };
+  const changes: Change[] = lastVisit === null ? [] : allMeta.flatMap((meta): Change[] => {
+    const page = readingOrder.find((entry) => entry.id === meta.id)!;
+    const record = progress[meta.id];
+    if (record && meta.updatedAt.getTime() > record.at + 60_000) return [{ page, kind: "Updated" }];
+    const created = overview.pageStats[meta.id]?.createdAt;
+    if (!record && created && created.getTime() > lastVisit) return [{ page, kind: "New" }];
+    return [];
+  });
+  const changed = new Map(changes.map((change) => [change.page.id, change.kind]));
+
+  const totalMinutes = readingOrder.reduce((sum, page) => sum + page.minutes, 0);
+  const lastUpdated = allMeta.reduce((latest, meta) => (meta.updatedAt > latest ? meta.updatedAt : latest), project.updatedAt);
+  const glossary = Object.entries(project.glossary ?? {}).sort(([a], [b]) => a.localeCompare(b));
+  const neighbours = [
+    ...(overview.parent ? [{ ...overview.parent, relation: "Part of" }] : []),
+    ...overview.children.map((child) => ({ ...child, relation: "Sub-project" })),
+    ...overview.related.map((entry) => ({ ...entry, relation: "Related" })),
   ];
 
   async function signOutAction() {
@@ -111,148 +146,188 @@ export default async function ProjectPage({
     await signOut({ redirectTo: "/login" });
   }
 
-  const label = "text-[11px] font-semibold tracking-[0.07em] text-muted uppercase";
-
   return (
     <AppShell
       sections={navSections}
       currentHref={projectHref}
       projectName={project.name}
       projectHref={projectHref}
-      toc={toc}
+      toc={[]}
       signOutAction={signOutAction}
       userEmail={session.user.email}
+      progress={progress}
     >
-      <article className="doc-panel reader-panel">
-        <header>
-          <nav aria-label="Breadcrumb" className="reader-crumbs">
-            <Link href="/">Library</Link>
-            <span aria-hidden>/</span>
-            <span>{project.name}</span>
-          </nav>
-          <h1 className="reader-title">{project.name}</h1>
-          <p className="reader-dek">{project.summary}</p>
-          <div className="reader-meta">
-            <div className="reader-facts">
-              <span>{STATUS_LABEL[project.status] ?? project.status}</span>
+      <div className="overview">
+        {/* Cover */}
+        <header className="ov-cover">
+          <div className="ov-cover-text">
+            <nav aria-label="Breadcrumb" className="reader-crumbs">
+              <Link href="/">Library</Link>
+              <span aria-hidden>/</span>
+              <span>{project.name}</span>
+            </nav>
+            <p className="ov-kicker">
+              <span className="ov-status" data-status={project.status}>{STATUS_LABEL[project.status] ?? project.status}</span>
               {project.version && <span>{project.version}</span>}
-              <span>{pageCount === 0 ? "No pages yet" : `${pageCount} page${pageCount === 1 ? "" : "s"}`}</span>
-            </div>
-          </div>
-          <ProjectProgress pages={readingOrder} />
-        </header>
-
-        <div className="mt-14 text-[15px] leading-[1.7] text-secondary">
-          <section>
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <SectionHeading id="pages">Pages</SectionHeading>
-              {editor && <Link href={`/compose/${project.slug}`} className="toolbar-button border-border-subtle">New document</Link>}
-            </div>
-            {editor && <SectionManager project={project.slug} sections={tree.sections.map((entry) => ({ id: entry.id, slug: entry.slug, title: entry.title, position: entry.position, pageCount: entry.pages.length }))} />}
-
-            {pageCount > 0 ? (
-              <div className="stagger mt-5 space-y-7">
-                {tree.sections
-                  .filter((s) => s.pages.length > 0)
-                  .map((section) => (
-                    <div key={section.id}>
-                      <h3 className={`${label} px-[14px]`}>{section.title}</h3>
-                      <ul className="mt-2 space-y-0.5">
-                        {section.pages.map((page) => (
-                          <PageRow key={page.id} href={`${projectHref}/${section.slug}/${page.slug}`} title={page.title} description={page.description} />
-                        ))}
-                      </ul>
-                    </div>
-                  ))}
-                {tree.loosePages.length > 0 && (
-                  <div>
-                    {tree.sections.some((s) => s.pages.length > 0) && <h3 className={`${label} px-[14px]`}>More pages</h3>}
-                    <ul className="mt-2 space-y-0.5">
-                      {tree.loosePages.map((page) => (
-                        <PageRow key={page.id} href={`${projectHref}/${page.slug}`} title={page.title} description={page.description} />
-                      ))}
-                    </ul>
-                  </div>
+            </p>
+            <h1 className="ov-title">{project.name}</h1>
+            <p className="ov-summary">{project.summary}</p>
+            {(project.stack.length > 0 || project.repositoryUrl) && (
+              <div className="ov-chips">
+                {project.stack.map((item) => <span key={item} className="ov-chip">{item}</span>)}
+                {project.repositoryUrl && (
+                  <a href={project.repositoryUrl} target="_blank" rel="noreferrer" className="ov-chip ov-chip-link">
+                    {project.repositoryUrl.replace(/^https?:\/\/(www\.)?/, "")} ↗
+                  </a>
                 )}
               </div>
-            ) : (
-              <div className="mt-4 rounded-code border border-border-subtle bg-ink/[0.018] px-6 py-8 text-center">
-                <span className="mx-auto flex h-9 w-9 items-center justify-center rounded-[10px] border border-border-visible bg-ink/[0.03] text-tertiary">
-                  <Icon path={ICONS.doc} size={15} />
-                </span>
-                <p className="mt-3.5 text-[14px] font-medium text-primary">No pages yet</p>
-                <p className="mx-auto mt-1.5 max-w-[380px] text-[13.5px] leading-relaxed text-secondary">
-                  Guides, standards and system explanations will appear here as your team documents its work.
-                </p>
-              </div>
             )}
-          </section>
+          </div>
+          <StartCard pages={readingOrder} />
+        </header>
 
-          <section className="mt-14">
-            <SectionHeading id="overview">Overview</SectionHeading>
-            <dl className="mt-5 grid grid-cols-1 gap-x-8 gap-y-5 sm:grid-cols-2">
-              <div>
-                <dt className={label}>Identifier</dt>
-                <dd className="mt-1.5 text-[14px]"><code className="inline-code">{project.slug}</code></dd>
-              </div>
-              <div>
-                <dt className={label}>Stack</dt>
-                <dd className="mt-1.5 text-[14px]">
-                  {project.stack.length > 0 ? <span className="text-primary">{project.stack.join(" · ")}</span> : <span className="text-muted">Not recorded</span>}
-                </dd>
-              </div>
-              <div className="sm:col-span-2">
-                <dt className={label}>Repository</dt>
-                <dd className="mt-1.5 text-[14px] break-all">
-                  {project.repositoryUrl ? (
-                    <a
-                      href={project.repositoryUrl}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="ease-base text-primary underline decoration-ink/20 underline-offset-[3px] transition-colors duration-200 hover:decoration-ink/50"
-                    >
-                      {project.repositoryUrl.replace(/^https?:\/\//, "")}
-                    </a>
-                  ) : (
-                    <span className="text-muted">Not linked</span>
-                  )}
-                </dd>
-              </div>
-            </dl>
-          </section>
+        {/* Stats */}
+        <dl className="ov-stats">
+          <div><dt>Pages</dt><dd>{readingOrder.length}</dd></div>
+          <div><dt>To read it all</dt><dd>{formatMinutes(totalMinutes)}</dd></div>
+          <div><dt>Sections</dt><dd>{tree.sections.length}</dd></div>
+          <div><dt>Last updated</dt><dd>{ago(lastUpdated)}</dd></div>
+          <div>
+            <dt>Contributors</dt>
+            <dd>
+              {overview.contributors.people || "—"}
+              {overview.contributors.agentEdits > 0 && <small> + {overview.contributors.agentEdits} agent edit{overview.contributors.agentEdits === 1 ? "" : "s"}</small>}
+            </dd>
+          </div>
+        </dl>
 
-          {/* Conventions and open questions are the highest-value fields in
-              the schema (BUILD.md §4) — shown prominently even when empty. */}
-          <section className="mt-14">
-            <SectionHeading id="conventions">Conventions</SectionHeading>
-            {project.conventions.length > 0 ? (
-              <ul className="mt-4 list-disc space-y-2 pl-5 text-[15px] text-body marker:text-muted">
-                {project.conventions.map((c, i) => <li key={i}>{c}</li>)}
-              </ul>
+        {changes.length > 0 && (
+          <section className="ov-changes" aria-labelledby="ov-changes-title">
+            <h2 id="ov-changes-title">
+              <span className="ov-pulse" aria-hidden />
+              New since your last visit
+            </h2>
+            <ul>
+              {changes.slice(0, 6).map(({ page, kind }) => (
+                <li key={page.id}>
+                  <Link href={page.href}>
+                    <span className="ov-badge">{kind}</span>
+                    <span className="ov-changes-title">{page.title}</span>
+                    <span aria-hidden>→</span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
+
+        <div className="ov-body">
+          <div className="ov-main">
+            <div className="ov-contents-head">
+              <h2 id="contents">Contents</h2>
+              {editor && <Link href={`/compose/${project.slug}`} className="toolbar-button">+ New document</Link>}
+            </div>
+            <ReadingMap sections={chapters} />
+            {editor && <SectionManager project={project.slug} sections={tree.sections.map((entry) => ({ id: entry.id, slug: entry.slug, title: entry.title, position: entry.position, pageCount: entry.pages.length }))} />}
+
+            {readingOrder.length === 0 ? (
+              <div className="ov-empty">
+                <Icon path={ICONS.doc} size={16} />
+                <p>No pages yet. Guides, standards and system explanations will appear here as the team documents its work.</p>
+              </div>
             ) : (
-              <EmptyHint>
-                Rules anyone working on this project should follow — naming, error formats, units. Recording them here
-                stops the same decisions being made twice.
-              </EmptyHint>
+              <ol className="ov-chapters">
+                {chapters.filter((chapter) => chapter.pages.length > 0).map((chapter, index) => (
+                  <li key={chapter.id} id={`chapter-${chapter.slug}`} className="ov-chapter">
+                    <header>
+                      <span className="ov-chapter-index" aria-hidden>{String(index + 1).padStart(2, "0")}</span>
+                      <h3>{chapter.title}</h3>
+                      <ChapterProgress pages={chapter.pages} />
+                    </header>
+                    <ul>
+                      {chapter.pages.map((page) => <PageRow key={page.id} page={page} badge={changed.get(page.id)} />)}
+                    </ul>
+                  </li>
+                ))}
+              </ol>
             )}
-          </section>
 
-          <section className="mt-14">
-            <SectionHeading id="open-questions">Open questions</SectionHeading>
-            {project.openQuestions.length > 0 ? (
-              <ul className="mt-4 list-disc space-y-2 pl-5 text-[15px] text-body marker:text-muted">
-                {project.openQuestions.map((q, i) => <li key={i}>{q}</li>)}
-              </ul>
-            ) : (
-              <EmptyHint>
-                Decisions still undecided. Writing them down prevents anyone picking up the project from silently guessing an answer.
-              </EmptyHint>
+            <div className="ov-paths">
+              <LearningPaths project={project.slug} paths={learningPaths} pages={readingOrder} editable={editor} />
+            </div>
+          </div>
+
+          <aside className="ov-side" aria-label="Project reference">
+            {(glossary.length > 0 || editor) && (
+              <Panel title="Glossary" count={glossary.length || undefined}>
+                {glossary.length > 0 ? (
+                  <dl className="ov-glossary">
+                    {glossary.slice(0, 8).map(([term, meaning]) => (
+                      <div key={term}><dt>{term}</dt><dd>{meaning}</dd></div>
+                    ))}
+                  </dl>
+                ) : (
+                  <p className="ov-hint">Define the project&rsquo;s own terms here so newcomers can read without guessing.</p>
+                )}
+                {glossary.length > 8 && (
+                  <details className="ov-more">
+                    <summary>All {glossary.length} terms</summary>
+                    <dl className="ov-glossary">
+                      {glossary.slice(8).map(([term, meaning]) => (
+                        <div key={term}><dt>{term}</dt><dd>{meaning}</dd></div>
+                      ))}
+                    </dl>
+                  </details>
+                )}
+              </Panel>
             )}
-          </section>
 
-          <LearningPaths project={project.slug} paths={learningPaths} pages={readingOrder} editable={editor} />
+            {(project.entrypoints.length > 0 || editor) && (
+              <Panel title="Where the code starts">
+                {project.entrypoints.length > 0 ? (
+                  <ul className="ov-entry">
+                    {project.entrypoints.map((entry) => <li key={entry}><code>{entry}</code></li>)}
+                  </ul>
+                ) : (
+                  <p className="ov-hint">List the files a newcomer should open first.</p>
+                )}
+              </Panel>
+            )}
+
+            {(project.conventions.length > 0 || editor) && (
+              <Panel title="House rules" count={project.conventions.length || undefined}>
+                {project.conventions.length > 0 ? (
+                  <ul className="ov-list">{project.conventions.map((c, i) => <li key={i}>{c}</li>)}</ul>
+                ) : (
+                  <p className="ov-hint">Naming, error formats, units — rules anyone working here should follow.</p>
+                )}
+              </Panel>
+            )}
+
+            {project.openQuestions.length > 0 && (
+              <Panel title="Still undecided" count={project.openQuestions.length}>
+                <ul className="ov-list">{project.openQuestions.map((q, i) => <li key={i}>{q}</li>)}</ul>
+              </Panel>
+            )}
+
+            {neighbours.length > 0 && (
+              <Panel title="Connected projects">
+                <ul className="ov-neighbours">
+                  {neighbours.map((entry) => (
+                    <li key={`${entry.relation}-${entry.slug}`}>
+                      <Link href={`/p/${entry.slug}`}>
+                        <span className="ov-neighbour-relation">{entry.relation}</span>
+                        <span className="ov-neighbour-name">{entry.name}</span>
+                        <span className="ov-neighbour-summary">{entry.summary}</span>
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </Panel>
+            )}
+          </aside>
         </div>
-      </article>
+      </div>
     </AppShell>
   );
 }
