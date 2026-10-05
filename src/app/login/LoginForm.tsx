@@ -6,7 +6,7 @@ import { signInWithPassword, signUpWithPassword, type FormState } from "./action
 type Mode = "signin" | "signup";
 
 const INPUT =
-  "ease-base shadow-inset-soft h-11 w-full rounded-input border border-border-visible bg-white/[0.02] px-3.5 text-[14px] text-primary transition-[background-color,border-color] duration-200 outline-none placeholder:text-muted hover:border-white/[0.09] focus:border-white/[0.16] focus:bg-white/[0.035]";
+  "ease-base shadow-inset-soft h-11 w-full rounded-input border border-border-visible bg-ink/[0.02] px-3.5 text-[14px] text-primary transition-[background-color,border-color] duration-200 outline-none placeholder:text-muted hover:border-ink/[0.09] focus:border-ink/[0.16] focus:bg-ink/[0.035]";
 const LABEL = "mb-2 block text-[12px] font-medium text-tertiary";
 
 export function LoginForm({
@@ -51,7 +51,7 @@ export function LoginForm({
       {state?.error && (
         <div
           role="alert"
-          className="mt-5 rounded-code border border-border-subtle bg-white/[0.022] px-3.5 py-2.5 text-[12.5px] leading-relaxed text-secondary"
+          className="mt-5 rounded-code border border-border-subtle bg-ink/[0.022] px-3.5 py-2.5 text-[12.5px] leading-relaxed text-secondary"
           style={{ borderLeft: "2px solid #8A6A62" }}
         >
           {state.error}
@@ -111,7 +111,7 @@ export function LoginForm({
               type="button"
               onClick={() => setShowPassword((v) => !v)}
               aria-label={showPassword ? "Hide password" : "Show password"}
-              className="ease-base absolute top-1/2 right-1.5 -translate-y-1/2 rounded-[7px] p-1.5 text-muted transition-colors duration-200 hover:bg-white/[0.05] hover:text-secondary"
+              className="ease-base absolute top-1/2 right-1.5 -translate-y-1/2 rounded-[7px] p-1.5 text-muted transition-colors duration-200 hover:bg-ink/[0.05] hover:text-secondary"
             >
               {showPassword ? <EyeOffIcon /> : <EyeIcon />}
             </button>
@@ -154,7 +154,7 @@ export function LoginForm({
           <button
             type="button"
             onClick={() => setMode(signingUp ? "signin" : "signup")}
-            className="ease-base text-secondary underline decoration-white/15 underline-offset-[3px] transition-colors duration-200 hover:text-primary hover:decoration-white/40"
+            className="ease-base text-secondary underline decoration-ink/15 underline-offset-[3px] transition-colors duration-200 hover:text-primary hover:decoration-ink/40"
           >
             {signingUp ? "Sign in" : "Create one"}
           </button>
@@ -184,8 +184,8 @@ function Button({
       disabled={pending}
       className={`ease-base flex h-11 w-full items-center justify-center gap-2 rounded-control border text-[13.5px] font-medium text-primary transition-[background-color,transform,border-color] duration-150 active:translate-y-[1px] disabled:pointer-events-none disabled:text-muted disabled:opacity-60 ${
         primary
-          ? "border-white/[0.10] bg-white/[0.07] hover:border-white/[0.14] hover:bg-white/[0.10]"
-          : "border-border-visible bg-white/[0.025] hover:bg-white/[0.05]"
+          ? "border-ink/[0.10] bg-ink/[0.07] hover:border-ink/[0.14] hover:bg-ink/[0.10]"
+          : "border-border-visible bg-ink/[0.025] hover:bg-ink/[0.05]"
       }`}
     >
       {pending ? (

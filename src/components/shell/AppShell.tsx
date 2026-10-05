@@ -7,6 +7,7 @@ import { MotionDialog } from "./MotionDialog";
 import { Toc } from "./Toc";
 import { Header } from "./Header";
 import { Icon, ICONS, HEADER_H } from "./icons";
+import { ReadMark } from "@/components/reading/ReadMarks";
 
 // --- left navigation ------------------------------------------------------
 
@@ -123,17 +124,11 @@ function SidebarNav({
                             : "text-secondary hover:bg-state-hover hover:text-primary"
                         }`}
                       >
-                        {active && (
-                          <span
-                            aria-hidden
-                            className="absolute top-[7px] bottom-[7px] left-0 w-[2px] rounded-full"
-                            style={{ background: "rgba(255,255,255,0.25)" }}
-                          />
-                        )}
+                        {active && <span aria-hidden className="nav-indicator" />}
                         <span
-                          className={active ? "text-tertiary" : "text-muted"}
+                          className={`inline-flex w-[14px] shrink-0 justify-center ${active ? "text-tertiary" : "text-muted"}`}
                         >
-                          <Icon path={ICONS.doc} />
+                          <ReadMark href={page.href} fallback={<Icon path={ICONS.doc} />} />
                         </span>
                         <span className="truncate">{page.title}</span>
                       </Link>

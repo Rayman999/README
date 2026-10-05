@@ -3,6 +3,7 @@
 import Link from "@/components/shell/NavigationLink";
 import { Icon, ICONS, HEADER_H } from "./icons";
 import { SearchCommand } from "./SearchCommand";
+import { ReadingPreferences } from "@/components/reading/ReadingPreferences";
 
 // Deliberately not re-exported. Re-exporting them from this "use client"
 // module is what made them arrive as undefined in server components.
@@ -34,7 +35,7 @@ export function Header({
       )}
 
       <Link href="/" className="flex shrink-0 items-center gap-2">
-        <span className="flex h-5 w-5 items-center justify-center rounded-[6px] border border-border-visible bg-white/[0.03] text-muted">
+        <span className="flex h-5 w-5 items-center justify-center rounded-[6px] border border-border-visible bg-ink/[0.03] text-muted">
           <Icon path={ICONS.doc} size={11} />
         </span>
         <span className="text-[13.5px] font-medium text-primary">readme</span>
@@ -46,6 +47,7 @@ export function Header({
         <Link href="/document-guide" className="hidden hover:text-primary sm:block">Writing guide</Link>
       </nav>
       <div className="flex shrink-0 items-center gap-1">
+        <ReadingPreferences />
         <Link
           href="/profile"
           title={userEmail ? `Profile - ${userEmail}` : "Profile"}

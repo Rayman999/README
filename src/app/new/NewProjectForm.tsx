@@ -5,7 +5,7 @@ import { createProject, type NewProjectState } from "./actions";
 import { slugify } from "@/lib/slug";
 
 const INPUT =
-  "ease-base shadow-inset-soft w-full rounded-input border border-border-visible bg-white/[0.02] px-3 text-[13.5px] text-primary transition-[background-color,border-color] duration-200 outline-none placeholder:text-muted hover:border-white/[0.09] focus:border-white/[0.14] focus:bg-white/[0.035]";
+  "ease-base shadow-inset-soft w-full rounded-input border border-border-visible bg-ink/[0.02] px-3 text-[13.5px] text-primary transition-[background-color,border-color] duration-200 outline-none placeholder:text-muted hover:border-ink/[0.09] focus:border-ink/[0.14] focus:bg-ink/[0.035]";
 const LABEL = "mb-1.5 block text-[12px] font-medium text-tertiary";
 const HINT = "mt-1.5 text-[11.5px] leading-relaxed text-muted";
 
@@ -26,7 +26,7 @@ export function NewProjectForm({
       {state?.error && (
         <div
           role="alert"
-          className="mb-5 rounded-code border border-border-subtle bg-white/[0.022] px-3.5 py-2.5 text-[12.5px] leading-relaxed text-secondary"
+          className="mb-5 rounded-code border border-border-subtle bg-ink/[0.022] px-3.5 py-2.5 text-[12.5px] leading-relaxed text-secondary"
           style={{ borderLeft: "2px solid #8A6A62" }}
         >
           {state.error}
@@ -138,7 +138,7 @@ export function NewProjectForm({
       <button
         type="submit"
         disabled={pending}
-        className="ease-base flex h-10 w-full items-center justify-center gap-2 rounded-control border border-border-visible bg-white/[0.035] text-[13.5px] font-medium text-primary transition-[background-color,transform] duration-150 hover:bg-white/[0.065] active:translate-y-[1px] disabled:pointer-events-none disabled:opacity-60"
+        className="ease-base flex h-10 w-full items-center justify-center gap-2 rounded-control border border-border-visible bg-ink/[0.035] text-[13.5px] font-medium text-primary transition-[background-color,transform] duration-150 hover:bg-ink/[0.065] active:translate-y-[1px] disabled:pointer-events-none disabled:opacity-60"
       >
         {pending ? "Creating…" : "Create project"}
       </button>

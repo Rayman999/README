@@ -61,8 +61,8 @@ export default async function AuthorizePage({ searchParams }: { searchParams: Pr
         <p className="mt-4 break-all text-xs leading-relaxed text-muted">Return address: {params.redirect_uri}</p>
         <p className="mt-3 text-xs text-secondary">You can revoke this connection at any time from your profile.</p>
         <div className="mt-6 flex gap-3">
-          <button name="decision" value="deny" className="min-h-11 flex-1 rounded-control border border-border-visible text-sm text-secondary hover:bg-white/5">Cancel</button>
-          <button name="decision" value="allow" className="min-h-11 flex-1 rounded-control border border-border-visible bg-white/10 text-sm font-medium text-heading hover:bg-white/15">Allow connection</button>
+          <button name="decision" value="deny" className="min-h-11 flex-1 rounded-control border border-border-visible text-sm text-secondary hover:bg-ink/5">Cancel</button>
+          <button name="decision" value="allow" className="min-h-11 flex-1 rounded-control border border-border-visible bg-ink/10 text-sm font-medium text-heading hover:bg-ink/15">Allow connection</button>
         </div>
       </form>
     </section>

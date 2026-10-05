@@ -36,24 +36,26 @@ export default async function Home() {
       <Header signOutAction={signOutAction} userEmail={session.user.email} />
 
       <main id="main-content" tabIndex={-1}
-        className="mx-auto w-full max-w-[900px] px-6 pb-24"
-        style={{ paddingTop: HEADER_H + 48 }}
+        className="mx-auto w-full max-w-[880px] px-6 pb-24"
+        style={{ paddingTop: HEADER_H + 56 }}
       >
-        <p className="eyebrow">Your team’s knowledge library</p>
+        <p className="eyebrow">Library</p>
         <div className="flex flex-wrap items-end justify-between gap-6">
           <div>
-            <h1 className="text-[36px] leading-tight font-semibold text-heading">
+            <h1 className="text-[40px] leading-[1.1] font-[650] tracking-[-0.028em] text-heading">
               {workspace?.name ?? "Workspace"}
             </h1>
-            <p className="mt-1.5 text-[14px] text-secondary">
-              Understand the systems. Learn the standards. Build with confidence.
+            <p className="mt-2.5 font-[family-name:var(--font-reading)] text-[17px] text-secondary">
+              {projects.length === 0
+                ? "Every project's guides, standards and decisions, in one place to read."
+                : `${projects.length} project${projects.length === 1 ? "" : "s"} documented. Pick one to start reading.`}
             </p>
           </div>
 
           {canEdit && (
             <Link
               href="/new"
-              className="ease-base flex h-9 shrink-0 items-center gap-1.5 rounded-control border border-border-visible bg-white/[0.035] px-3.5 text-[13px] font-medium text-primary transition-[background-color,transform] duration-150 hover:bg-white/[0.065] active:translate-y-[1px]"
+              className="ease-base flex h-9 shrink-0 items-center gap-1.5 rounded-control border border-border-visible bg-ink/[0.035] px-3.5 text-[13px] font-medium text-primary transition-[background-color,transform] duration-150 hover:bg-ink/[0.065] active:translate-y-[1px]"
             >
               <Icon path={ICONS.plus} size={13} />
               New project
@@ -61,12 +63,12 @@ export default async function Home() {
           )}
         </div>
 
-        <div className="library-intro"><span className="eyebrow">A little context goes a long way</span><h2>Make your next step an informed one.</h2><p>Explore a project to find the decisions, practical guides, and shared conventions behind the work.</p></div>
-        <div className="mb-5 flex items-center justify-between"><h2 className="text-lg font-semibold text-primary">Explore projects</h2><span className="text-sm">{projects.length} in your library</span></div>
+        <h2 className="sr-only">Projects</h2>
+        <div className="mt-10" />
 
         {libraryProjects.length === 0 ? (
           <div className="auth-panel px-8 py-12 text-center">
-            <span className="mx-auto flex h-10 w-10 items-center justify-center rounded-[11px] border border-border-visible bg-white/[0.03] text-tertiary">
+            <span className="mx-auto flex h-10 w-10 items-center justify-center rounded-[11px] border border-border-visible bg-ink/[0.03] text-tertiary">
               <Icon path={ICONS.doc} size={17} />
             </span>
             <h2 className="mt-4 text-[16px] font-semibold text-primary">
@@ -79,7 +81,7 @@ export default async function Home() {
             {canEdit && (
               <Link
                 href="/new"
-                className="ease-base mt-6 inline-flex h-9 items-center gap-1.5 rounded-control border border-border-visible bg-white/[0.035] px-4 text-[13px] font-medium text-primary transition-[background-color,transform] duration-150 hover:bg-white/[0.065] active:translate-y-[1px]"
+                className="ease-base mt-6 inline-flex h-9 items-center gap-1.5 rounded-control border border-border-visible bg-ink/[0.035] px-4 text-[13px] font-medium text-primary transition-[background-color,transform] duration-150 hover:bg-ink/[0.065] active:translate-y-[1px]"
               >
                 <Icon path={ICONS.plus} size={13} />
                 Create your first project
@@ -94,7 +96,7 @@ export default async function Home() {
               );
               return (
                 <li key={project.id}>
-                  <div className="project-card ease-base flex h-full flex-col rounded-code border border-border-subtle bg-white/[0.018] transition-[background-color,transform] duration-200 hover:bg-white/[0.035]">
+                  <div className="project-card ease-base flex h-full flex-col rounded-code border border-border-subtle bg-ink/[0.018] transition-[background-color,transform] duration-200 hover:bg-ink/[0.035]">
                     <Link
                       href={`/p/${project.slug}`}
                       className="project-card-link block flex-1 rounded-code"

@@ -101,7 +101,7 @@ export function AvatarUpload({
     <div className="flex items-center gap-4">
       <span
         aria-hidden
-        className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-full border border-border-visible bg-white/[0.03] text-[17px] font-medium text-tertiary"
+        className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-full border border-border-visible bg-ink/[0.03] text-[17px] font-medium text-tertiary"
       >
         {shown ? (
           // eslint-disable-next-line @next/next/no-img-element
@@ -129,7 +129,7 @@ export function AvatarUpload({
             type="button"
             disabled={isPending}
             onClick={() => inputRef.current?.click()}
-            className="ease-base flex h-8 items-center rounded-control border border-border-visible bg-white/[0.035] px-3 text-[12.5px] font-medium text-primary transition-[background-color,transform] duration-150 hover:bg-white/[0.065] active:translate-y-[1px] disabled:pointer-events-none disabled:opacity-60"
+            className="ease-base flex h-8 items-center rounded-control border border-border-visible bg-ink/[0.035] px-3 text-[12.5px] font-medium text-primary transition-[background-color,transform] duration-150 hover:bg-ink/[0.065] active:translate-y-[1px] disabled:pointer-events-none disabled:opacity-60"
           >
             {isPending ? "Uploading…" : shown ? "Change picture" : "Upload picture"}
           </button>

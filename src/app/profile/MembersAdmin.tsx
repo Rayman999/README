@@ -62,7 +62,7 @@ export function MembersAdmin({
       {error && (
         <div
           role="alert"
-          className="mb-4 rounded-code border border-border-subtle bg-white/[0.022] px-3.5 py-2.5 text-[12.5px] leading-relaxed text-secondary"
+          className="mb-4 rounded-code border border-border-subtle bg-ink/[0.022] px-3.5 py-2.5 text-[12.5px] leading-relaxed text-secondary"
           style={{ borderLeft: "2px solid #8A6A62" }}
         >
           {error}
@@ -70,7 +70,7 @@ export function MembersAdmin({
       )}
 
       {/* --- sign-up switch ------------------------------------------------ */}
-      <div className="flex flex-wrap items-center justify-between gap-4 rounded-code border border-border-subtle bg-white/[0.018] px-4 py-3.5">
+      <div className="flex flex-wrap items-center justify-between gap-4 rounded-code border border-border-subtle bg-ink/[0.018] px-4 py-3.5">
         <div className="min-w-0">
           <p className="text-[13.5px] font-medium text-primary">Open sign-up</p>
           <p className="mt-0.5 text-[12.5px] leading-relaxed text-secondary">
@@ -91,8 +91,8 @@ export function MembersAdmin({
           }
           className={`ease-base relative h-[22px] w-[38px] shrink-0 rounded-full border transition-colors duration-200 disabled:opacity-50 ${
             registrationOpen
-              ? "border-white/20 bg-white/[0.16]"
-              : "border-border-visible bg-white/[0.03]"
+              ? "border-ink/20 bg-ink/[0.16]"
+              : "border-border-visible bg-ink/[0.03]"
           }`}
         >
           <span
@@ -126,7 +126,7 @@ export function MembersAdmin({
             >
               <span
                 aria-hidden
-                className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full border border-border-visible bg-white/[0.03] text-[12px] font-medium text-tertiary"
+                className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full border border-border-visible bg-ink/[0.03] text-[12px] font-medium text-tertiary"
               >
                 {member.image ? (
                   /* eslint-disable-next-line @next/next/no-img-element */
@@ -186,7 +186,7 @@ export function MembersAdmin({
                         removeWorkspaceMember(member.userId),
                       )
                     }
-                    className="ease-base h-8 rounded-control border px-2.5 text-[12px] text-primary transition-colors duration-200 hover:bg-white/[0.06] disabled:opacity-50"
+                    className="ease-base h-8 rounded-control border px-2.5 text-[12px] text-primary transition-colors duration-200 hover:bg-ink/[0.06] disabled:opacity-50"
                     style={{ borderColor: "rgba(138,106,98,0.55)" }}
                   >
                     {rowBusy ? "Removing…" : "Confirm"}

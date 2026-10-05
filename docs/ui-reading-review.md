@@ -1,5 +1,7 @@
 # Reading experience review
 
+> **Superseded (Oct 2026).** The sage accent and the separate "reading-first" palette described below were replaced by a single neutral system with Graphite and Paper themes, reader preferences, and reading-progress features. `theme.md` is the current reference.
+
 Reviewed all nine page types: library, project overview, document reader, writing studio, component guide, new project, login, profile, and agent connections, plus the OAuth approval screen.
 
 ## Implemented

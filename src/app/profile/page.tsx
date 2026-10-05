@@ -105,7 +105,7 @@ export default async function ProfilePage() {
         <div className="mt-4 flex items-center gap-4">
           <span
             aria-hidden
-            className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-full border border-border-visible bg-white/[0.03] text-[17px] font-medium text-tertiary"
+            className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-full border border-border-visible bg-ink/[0.03] text-[17px] font-medium text-tertiary"
           >
             {account.image ? (
               /* eslint-disable-next-line @next/next/no-img-element */
@@ -158,7 +158,7 @@ export default async function ProfilePage() {
         <section className="mt-10">
           <SectionHeading>Agent connections</SectionHeading>
           <p className="mt-2 text-[13px] text-secondary">Connect ChatGPT to your documentation and manage its access.</p>
-          <Link href="/connections" className="mt-4 inline-flex min-h-11 items-center rounded-control border border-border-visible px-4 text-sm text-primary hover:bg-white/5">Manage connections</Link>
+          <Link href="/connections" className="mt-4 inline-flex min-h-11 items-center rounded-control border border-border-visible px-4 text-sm text-primary hover:bg-ink/5">Manage connections</Link>
         </section>
         <section className="mt-10">
           <SectionHeading>Details</SectionHeading>

@@ -71,7 +71,7 @@ export function SectionManager({ project, sections }: { project: string; section
       </button>
 
       {open && (
-        <div className="motion-enter mt-3 rounded-control border border-border-subtle bg-white/[0.018] p-4">
+        <div className="motion-enter mt-3 rounded-control border border-border-subtle bg-ink/[0.018] p-4">
           <form
             className="flex flex-wrap items-center gap-2"
             onSubmit={(event) => {
@@ -93,12 +93,12 @@ export function SectionManager({ project, sections }: { project: string; section
               disabled={working}
               onChange={(event) => setTitle(event.target.value)}
               placeholder="Guides"
-              className="ease-base min-w-[180px] flex-1 rounded-input border border-border-visible bg-inset px-3 py-2 text-[13px] text-primary transition-colors duration-200 outline-none placeholder:text-muted focus:border-white/[0.16]"
+              className="ease-base min-w-[180px] flex-1 rounded-input border border-border-visible bg-inset px-3 py-2 text-[13px] text-primary transition-colors duration-200 outline-none placeholder:text-muted focus:border-ink/[0.16]"
             />
             <button
               type="submit"
               disabled={working || !title.trim()}
-              className="ease-base rounded-control border border-border-visible bg-white/[0.05] px-3 py-2 text-[13px] text-primary transition-colors duration-200 hover:bg-white/[0.08] disabled:opacity-50"
+              className="ease-base rounded-control border border-border-visible bg-ink/[0.05] px-3 py-2 text-[13px] text-primary transition-colors duration-200 hover:bg-ink/[0.08] disabled:opacity-50"
             >
               Add section
             </button>
@@ -133,7 +133,7 @@ export function SectionManager({ project, sections }: { project: string; section
                         maxLength={120}
                         autoFocus
                         onChange={(event) => setDraft(event.target.value)}
-                        className="ease-base min-w-[160px] flex-1 rounded-input border border-border-visible bg-inset px-2.5 py-1.5 text-[13px] text-primary outline-none focus:border-white/[0.16]"
+                        className="ease-base min-w-[160px] flex-1 rounded-input border border-border-visible bg-inset px-2.5 py-1.5 text-[13px] text-primary outline-none focus:border-ink/[0.16]"
                       />
                       <button type="submit" disabled={working} className="ease-base rounded-control border border-border-visible px-2.5 py-1.5 text-[12px] text-primary hover:bg-state-hover disabled:opacity-50">Save</button>
                       <button type="button" onClick={() => setRenaming(null)} className="ease-base rounded-control px-2 py-1.5 text-[12px] text-muted hover:text-secondary">Cancel</button>

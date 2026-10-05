@@ -2,7 +2,7 @@
 import { useActionState, useState } from "react";
 import { createClient } from "./actions";
 
-const input = "mt-2 block min-h-11 w-full rounded-input border border-border-visible bg-white/[0.025] px-3 py-2 text-sm text-primary focus:outline-2 focus:outline-offset-2 focus:outline-white/30";
+const input = "mt-2 block min-h-11 w-full rounded-input border border-border-visible bg-ink/[0.025] px-3 py-2 text-sm text-primary focus:outline-2 focus:outline-offset-2 focus:outline-ink/30";
 
 type ClientType = "confidential" | "public";
 
@@ -52,7 +52,7 @@ export function ClientForm() {
 
     {state.error && <p role="alert" className="text-sm text-primary">{state.error}</p>}
 
-    {state.clientId && <div role="status" className="rounded-input border border-border-visible bg-white/5 p-4 text-sm">
+    {state.clientId && <div role="status" className="rounded-input border border-border-visible bg-ink/5 p-4 text-sm">
       <p className="font-medium text-heading">{state.clientSecret ? "Client created. Save the secret now." : "Client created."}</p>
       <p className="mt-2 text-secondary">{state.clientSecret
         ? "The secret is shown only here. Paste it into the OAuth client secret field in the agent app — not into a conversation."
@@ -61,6 +61,6 @@ export function ClientForm() {
       {state.clientSecret && <label className="mt-3 block">Client secret<input className={input} readOnly value={state.clientSecret} onFocus={(e) => e.target.select()} autoComplete="off" /></label>}
     </div>}
 
-    <button disabled={pending} className="min-h-11 rounded-control border border-border-visible bg-white/10 px-5 text-sm font-medium text-heading hover:bg-white/15 disabled:opacity-50">{pending ? "Creating…" : "Create client"}</button>
+    <button disabled={pending} className="min-h-11 rounded-control border border-border-visible bg-ink/10 px-5 text-sm font-medium text-heading hover:bg-ink/15 disabled:opacity-50">{pending ? "Creating…" : "Create client"}</button>
   </form>;
 }

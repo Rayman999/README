@@ -1,393 +1,229 @@
-# Theme — locked
+# Theme
 
 The readme wiki's visual system. Read this before rendering the wiki, building any component for it, or generating UI that sits inside it.
 
-This is a constraint, not a starting point. The identity depends entirely on discipline: one neutral palette, three depth levels, and no colour doing work that typography and spacing should do. Every rule here exists because breaking it makes the interface look like a generic dark SaaS dashboard.
+The product exists to be read. Every rule here serves one goal: a reader should be able to open a page and keep reading — comfortably, for a long time, without the interface getting in the way. When a rule and that goal conflict, the goal wins; then update this file so the code and the spec never drift apart again.
+
+`src/app/globals.css` implements this file. Change values here first, then there.
 
 **Contents**
 1. Direction
-2. Tokens
-3. Layout
-4. Depth system
-5. The ramp
-6. Left navigation
-7. Right table of contents
-8. Header
-9. Content panel
-10. Code blocks
+2. Why it reads well
+3. Themes and tokens
+4. Reading preferences
+5. Layout
+6. Depth
+7. The reader
+8. Momentum
+9. Typography
+10. Code
 11. Callouts
-12. Typography
-13. Buttons and inputs
-14. Motion
-15. Prohibited
+12. Navigation and contents
+13. Motion
+14. Prohibited
 
 ---
 
 ## 1. Direction
 
-> Matte dark UI with soft elevation, low-contrast surfaces, gently raised content areas, and subtle grey-to-black gradients.
+> A quiet, matte reading room. Neutral greys, one softly raised page, generous space, and nothing that competes with the words.
 
-Picture the whole application as one large sheet of matte graphite. Navigation, header, and table of contents are printed directly onto that flat sheet. In the centre, the documentation area gently rises out of the material like a shallow platform — a curved ramp up, a flat top, a ramp back down. Inside that raised surface, code blocks are slightly inset.
+Graphite (dark) is the default and the identity. Paper (light) is the same design printed on a light ground, for daytime reading and for readers who find light-on-dark text blurry. Both are strictly neutral — never blue-, green- or purple-tinted.
 
-It should feel like a real desktop application, not a marketing site. Dark, quiet, tactile, mature, and easy on the eyes for hours.
-
-The colour temperature is neutral throughout. Black, graphite, charcoal, grey, soft white. **Never blue-tinted** — that tint is the single most common failure mode in dark interfaces and it's the fastest way to make this look like everything else.
+There is **no accent colour**. Emphasis is brightness, weight, size and space. If something needs to stand out, make it brighter or give it room; don't give it a hue.
 
 ---
 
-## 2. Tokens
+## 2. Why it reads well
 
-Use these verbatim.
+The layout is built from reading research rather than taste:
 
-```css
-:root {
-  /* Base shell — flat, nearly black */
-  --bg-base:         #090A0B;
-  --bg-shell:        #0B0C0E;
-  --bg-shell-alt:    #0D0E10;
-
-  /* Raised documentation panel */
-  --surface-raised:      #141517;
-  --surface-raised-top:  #17181A;  /* gradient top */
-  --surface-raised-mid:  #141517;  /* gradient middle */
-  --surface-raised-base: #111214;  /* gradient bottom */
-
-  /* Inset surfaces — code blocks, embedded content */
-  --surface-inset:   #0D0E10;
-  --surface-sunken:  #0B0C0E;
-
-  /* Text */
-  --text-primary:    #E7E7E7;
-  --text-heading:    #DEDEDE;
-  --text-secondary:  #989A9F;
-  --text-tertiary:   #8B8E94;
-  --text-muted:      #64676D;
-
-  /* Borders — barely there */
-  --border-faint:    rgba(255,255,255,0.04);
-  --border-subtle:   rgba(255,255,255,0.05);
-  --border-visible:  rgba(255,255,255,0.07);
-
-  /* Interactive states */
-  --state-hover:     rgba(255,255,255,0.03);
-  --state-active:    rgba(255,255,255,0.05);
-  --state-selected:  rgba(255,255,255,0.05);
-
-  /* Elevation */
-  --shadow-panel:    0 18px 60px rgba(0,0,0,0.25);
-  --shadow-ambient:  0 2px 12px rgba(0,0,0,0.18);
-  --highlight-top:   inset 0 1px 0 rgba(255,255,255,0.03);
-  --shadow-inset:    inset 0 1px 2px rgba(0,0,0,0.35);
-
-  /* Radii */
-  --radius-panel:    28px;   /* 24–32 range */
-  --radius-code:     12px;   /* 10–14 range */
-  --radius-control:  9px;    /* 8–10 range */
-  --radius-input:    10px;   /* 8–12 range */
-
-  /* Muted syntax palette */
-  --syn-keyword:     #A9A3C2;  /* muted lavender-grey */
-  --syn-string:      #9FB09B;  /* muted sage */
-  --syn-function:    #A3B0BC;  /* soft pale blue-grey */
-  --syn-variable:    #C9CACD;
-  --syn-number:      #B5AFA3;
-  --syn-comment:     #5B5E63;
-  --syn-punctuation: #7A7D82;
-
-  /* Motion */
-  --ease:            cubic-bezier(0.4, 0.0, 0.2, 1);
-  --dur-fast:        150ms;
-  --dur-base:        200ms;
-  --dur-slow:        250ms;
-}
-```
-
-There is no accent colour. If something needs emphasis, it gets brighter text, more space, or elevation — not hue. Status colours (a `deprecated` badge, an error state) are permitted but must be desaturated to sit inside this palette; never a saturated red, green, or blue.
+| Principle | Rule here | Why |
+|---|---|---|
+| Line length | ~65–75 characters (measure set in `em`) | Shorter lines break rhythm; longer ones make it hard to find the next line |
+| Size and leading | 17px body, ~1.7 line-height | 16px is the floor for screen reading; tight leading makes lines blur together |
+| Contrast | Off-white body text, never pure white on black | Pure white on near-black causes halation, especially with astigmatism |
+| Light option | Paper theme, one click away | Light mode is faster and clearer for many readers in daylight |
+| Scanning | Headings carry meaning, sit left, have more space above than below | People scan the left edge and the first words of each heading (F-pattern) |
+| Orientation | Progress bar, filling contents rail, minutes left | Knowing how much is left is what keeps people reading |
+| Continuation | Strong "Up next" at the end; `]` for next page | Momentum: the next step is always one action away |
+| Control | Theme, typeface, size and width are the reader's choice | Comfort is personal; defaults can't fit everyone |
 
 ---
 
-## 3. Layout
+## 3. Themes and tokens
 
-Three columns on one continuous shell, plus a minimal header.
+The same token names carry both themes. Components only ever use tokens.
+
+| Token | Graphite | Paper | Use |
+|---|---|---|---|
+| `--bg-base` / `--bg-shell` | `#0A0A0B` | `#F2F2EF` | Page, header, side rails — one continuous flat sheet |
+| `--surface-raised-top → base` | `#171719 → #111113` | `#FDFDFB → #F8F8F5` | The raised page (gradient, barely visible) |
+| `--surface-inset` | `#0D0D0F` | `#F1F1EE` | Code blocks and embedded content |
+| `--text-heading` | `#EDEDEE` | `#18181A` | Titles, headings |
+| `--text-primary` | `#E3E3E5` | `#1F2022` | Strong text, links, UI labels |
+| `--text-body` | `#C2C3C7` | `#36373A` | Reading text |
+| `--text-secondary` | `#A3A5AA` | `#55575B` | Descriptions, supporting text |
+| `--text-tertiary` | `#8E9096` | `#696B70` | Metadata |
+| `--text-muted` | `#6E7177` | `#8A8C91` | Labels, hints |
+| `--ink-rgb` | `255 255 255` | `0 0 0` | Every translucent tint and hairline |
+
+Borders and states are ink at low alpha: `--border-faint/subtle/visible` and `--state-hover/active/selected`. In Tailwind use `bg-ink/[0.03]`, `border-ink/10` — never `white/` or `black/`, which break the other theme.
+
+Status colours are desaturated and used only for status: `--status-warn` (amber) and `--status-danger` (rust).
+
+Syntax colours (`--syn-*`) are muted in both themes. Nothing in a code block is brighter than body text.
+
+Shadows: none on Graphite (nothing is darker than the shell to cast onto), a soft one on Paper (`--shadow-panel`).
+
+---
+
+## 4. Reading preferences
+
+Set from the **Aa** menu in the header, stored per browser, and applied before first paint as attributes on `<html>` so there is never a flash of the wrong theme.
+
+| Attribute | Values | Effect |
+|---|---|---|
+| `data-theme` | `graphite` (default), `paper`; "Auto" resolves from the system | Swaps the token set |
+| `data-face` | `sans` (Inter, default), `serif` (Literata) | Body text face; headings stay sans |
+| `data-size` | `s` 15.5px, `m` 17px, `l` 18.5px, `xl` 20px | `--reading-size` |
+| `data-measure` | `narrow` 31em, `standard` 36em, `wide` 43em | `--measure`; in `em` so characters per line stay constant at any size |
+| `.reading-focus` | on/off (`F`) | Hides both side rails |
+
+---
+
+## 5. Layout
 
 ```
 ┌──────────────────────────────────────────────────────────────┐
-│  icon · wiki name        [ search ]      changelog · gh · ⚙  │
-├────────────┬───────────────────────────────────┬─────────────┤
+│  readme              [ search ]          Library  Aa  ◯  ⇥   │
+├════════════════════ progress line ═══════════════════════════┤
 │            │  ╭─────────────────────────────╮  │             │
-│  file      │  │                             │  │  ON THIS    │
-│  tree      │  │   raised content panel      │  │  PAGE       │
-│            │  │                             │  │             │
-│  (flat)    │  ╰─────────────────────────────╯  │  (flat)     │
+│  project   │  │  crumbs                     │  │  ON THIS    │
+│  tree      │  │  Title                      │  │  PAGE       │
+│  ✓ read    │  │  dek                        │  │  ┃ filled   │
+│  ◔ partly  │  │  3 min · Updated  [tools]   │  │  ┃ rail     │
+│            │  │  ───────────────────────    │  │             │
+│            │  │  body at the measure        │  │  2 min left │
+│            │  │  Up next →                  │  │             │
+│            │  ╰─────────────────────────────╯  │             │
 └────────────┴───────────────────────────────────┴─────────────┘
 ```
 
 | Region | Width | Surface |
 |---|---|---|
-| Header | full | flat, `--bg-shell` |
-| Left nav | 260–290px | flat, `--bg-base` |
-| Content | fluid, max ~760px text measure | **raised**, `--surface-raised` |
-| Right TOC | 220–240px | flat, `--bg-base` |
+| Header | full, 54px | flat |
+| Left nav | 272px (≥1024px) | flat |
+| Page | measure + 2×56px padding | raised |
+| Right contents | 232px (≥1280px) | flat |
 
-The header, both sidebars, and the page background must read as one continuous flat surface. The content panel is the only elevated object on the screen — that's what makes the elevation legible at all.
-
-Content measure stays around 70–80 characters. A wide content area destroys readability regardless of how good the surface treatment is.
+Below 1280px the contents fold into an "On this page" disclosure in the article header. Below 480px the page loses its frame and the text runs edge to edge with small margins.
 
 ---
 
-## 4. Depth system
+## 6. Depth
 
-Exactly three levels. Not four, not ten.
+Exactly three levels.
 
 | Level | What | Treatment |
 |---|---|---|
-| **0** | Shell — header, sidebars, background | Flat. No shadow, no card, no background of its own. |
-| **+1** | Documentation content panel | Softly raised. Large radius, faint gradient, very soft shadow, hairline top highlight. |
-| **−1** | Code blocks, embedded content | Slightly inset. Darker than the panel, small inner shadow. |
+| 0 | Shell — header, rails, background | Flat. No card, no shadow |
+| +1 | The page | Raised: large radius, faint gradient, hairline border, top highlight |
+| −1 | Code, embedded content | Inset: darker than the page, small inner shadow |
 
-Everything else — nav rows, buttons, search, callouts — is a surface *tint* at level 0 or +1, not a new elevation. Hover states change background alpha, never elevation.
-
-The depth should only become obvious when you compare the panel against the surrounding shell. If it announces itself, it's too strong.
+Everything else — rows, buttons, callouts, cards — is a tint, not a new level.
 
 ---
 
-## 5. The ramp
+## 7. The reader
 
-The transition from flat shell into the raised panel is the signature of this design. The elevation shouldn't jump — it should slope.
+Inside the page, in order:
 
-```
-flat shell → soft grey transition → rounded slope → raised matte platform
-```
+1. **Crumbs** — project / section, 12.5px muted
+2. **Title** — 30–42px, weight 650, tight tracking, balanced wrapping
+3. **Dek** — the page description, ~1.14em secondary, in the reading face
+4. **Meta row** — minutes to read · updated date · status chip if not stable; tools on the right (Focus, Page history, Edit)
+5. **Status notice** — only for Draft or Deprecated
+6. **Body** — at the measure
+7. **End** — completion note, "Up next" card, previous link
+8. **Page settings** — editors only, collapsed
 
-Build it by layering, not by stacking a border and a drop shadow:
+Editor controls never sit above the content. Readers come first.
 
-```css
-.doc-panel {
-  position: relative;
-  border-radius: var(--radius-panel);
-  background: linear-gradient(
-    180deg,
-    var(--surface-raised-top) 0%,
-    var(--surface-raised-mid) 45%,
-    var(--surface-raised-base) 100%
-  );
-  box-shadow:
-    var(--shadow-panel),
-    var(--highlight-top);
-  border: 1px solid var(--border-faint);
-}
-
-/* the ramp: a soft halo bleeding into the shell */
-.doc-panel::before {
-  content: '';
-  position: absolute;
-  inset: -24px;
-  border-radius: calc(var(--radius-panel) + 24px);
-  background: radial-gradient(
-    ellipse at 50% 0%,
-    rgba(255,255,255,0.020) 0%,
-    rgba(255,255,255,0.008) 40%,
-    transparent 72%
-  );
-  pointer-events: none;
-  z-index: -1;
-}
-```
-
-The gradient exists to communicate shape, not to be seen. If you can identify it as a gradient, halve it. Same for the shadow: it should almost disappear into the surrounding dark rather than reading as a floating card.
-
-Top corners get the smoothest transition — that's where the eye lands first.
+Boxed blocks (code, tables, callouts, charts) extend 18px into the page margin on wide screens, so the text inside them lines up with the paragraphs around them.
 
 ---
 
-## 6. Left navigation
+## 8. Momentum
 
-An IDE file tree, carved into the shell. **No card, no panel background, no strong separator.**
+These are what make the wiki pleasant to keep reading. Progress is stored only in the reader's browser.
 
-- Section headers: 11px, uppercase, letter-spacing ~0.06em, `--text-muted`
-- Page rows: 13.5px, `--text-secondary`
-- Hover: background `--state-hover`, text lifts to `--text-primary`
-- Selected: background `--state-selected`, text `--text-primary`, `--radius-control`
-- Optional 2px indicator bar at the row's left edge in `rgba(255,255,255,0.25)`
-- Small monochrome icons at ~14px, `--text-muted`, brightening on hover
-- Row height 30–32px, comfortable but dense
-
-The selected row is a slightly lighter charcoal, never a coloured button. Colour in the sidebar would pull attention away from the content panel, which is the whole point of the layout.
-
-Separator from the content column: `1px solid var(--border-faint)`, or nothing at all if the spacing already separates them.
+- **Progress line** under the header, filling as the article is read.
+- **Contents rail** fills down to the current section; passed sections dim, the current one is brightest; minutes left underneath.
+- **Read marks**: a check beside finished pages and a small progress ring beside partly read ones, in the nav and on the project page.
+- **Resume**: returning to a half-read page offers "Continue where you left off" with the section name.
+- **Finish and continue**: reaching the end marks the page read and offers the next page, with its description, as the obvious next step.
+- **Project progress**: "3 of 12 read" and a single "Continue reading" / "Read next" card at the top of each project.
+- **Keys**: `[` and `]` for previous and next page, `F` for focus mode, `Ctrl K` for search.
 
 ---
 
-## 7. Right table of contents
+## 9. Typography
 
-The quietest region on the screen. Sits directly on `--bg-base`. No card, no border, no background.
+Sans: **Inter** (with `cv05`/`cv08` so l, I and 1 are distinct). Serif option: **Literata**. Mono: **JetBrains Mono**.
 
-- Label `ON THIS PAGE`: 10.5px, uppercase, letter-spacing ~0.08em, `--text-muted`
-- Entries: 12.5px, `--text-tertiary`
-- `###` entries indented 12px
-- Active entry: `--text-primary`, plus a 2px vertical indicator in `rgba(255,255,255,0.22)`
-- Active state transitions on scroll at `--dur-slow` — it should drift, not snap
+| Element | Size | Weight | Colour |
+|---|---|---|---|
+| Title | 30–42px | 650 | heading |
+| H2 | 1.42em | 650 | heading |
+| H3 | 1.1em | 620 | primary |
+| Body | `--reading-size` / ~1.7 | 400 | body |
+| Code | max(12.5px, .78em) / 1.7 | 400 | primary |
+| Labels | 11px, uppercase, .07–.08em | 600 | muted |
 
----
+Rhythm: 2.4em above an H2, 1.9em above an H3, ~0.55em below either, 1.05em between paragraphs. Body text is left-aligned and ragged, with `text-wrap: pretty`; headings use `text-wrap: balance`.
 
-## 8. Header
-
-Compact and flat. Height 52–56px, background `--bg-shell`, bottom border `--border-faint`.
-
-Left: app icon and wiki name (13.5px, `--text-primary`). Centre: search. Right: changelog, GitHub, theme toggle, profile — all monochrome icons at `--text-muted`.
-
-Search is a recessed input that blends into the shell:
-
-```css
-.search {
-  background: rgba(255,255,255,0.02);
-  border: 1px solid var(--border-visible);
-  border-radius: var(--radius-input);
-  color: var(--text-primary);
-  height: 32px;
-  box-shadow: var(--shadow-inset);
-}
-.search::placeholder { color: var(--text-muted); }
-.search:focus {
-  border-color: rgba(255,255,255,0.10);
-  background: rgba(255,255,255,0.03);
-  outline: none;              /* no coloured focus ring */
-}
-```
+Links are primary-coloured with a soft underline that strengthens on hover. Inline code is a light ink tint, not a dark box.
 
 ---
 
-## 9. Content panel
+## 10. Code
 
-Inside the raised panel, in order:
-
-1. **Breadcrumbs** — 11.5px, `--text-muted`, `/` separators in `--text-muted` at lower opacity
-2. **H1** — 30–34px, semibold, `--text-heading`, tight leading
-3. **Description** — 15px, `--text-secondary`
-4. **Divider** — `1px solid var(--border-subtle)`, generous margin
-5. **Body** — sections, code, callouts
-6. **Previous / next footer** — two understated blocks, `--text-secondary` labels, `--text-primary` titles
-
-Panel padding: 48–56px horizontal, 40–48px vertical. Space is doing real work in this design — cramping the panel undoes the elevation effect.
-
----
-
-## 10. Code blocks
-
-Inset one level below the panel.
-
-```css
-.code-block {
-  background: var(--surface-inset);
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-code);
-  box-shadow: var(--shadow-inset);
-  font-size: 13px;
-  line-height: 1.65;
-  padding: 16px 18px;
-}
-.code-block__title {
-  font-size: 11.5px;
-  color: var(--text-muted);
-  border-bottom: 1px solid var(--border-faint);
-  padding: 9px 18px;
-}
-```
-
-Syntax highlighting uses the muted `--syn-*` tokens. The goal is legible structure, not colour — if the code looks colourful, the palette is wrong. Comments recede to `--syn-comment`; nothing in a code block should be brighter than `--text-primary`.
-
-Inline code: `--surface-inset` background, 2px 6px padding, `--radius-control` at the small end, `--text-primary`, 0.92em.
+Inset one level. A header bar shows the language and a **Copy** button. Highlighting uses the muted `--syn-*` tokens via CSS variables, so code follows the theme without re-rendering. Comments recede; structure is visible but nothing is loud.
 
 ---
 
 ## 11. Callouts
 
-Subtle by design. A slightly different charcoal, a small monochrome icon, muted text — never a bright blue information box.
-
-```css
-.callout {
-  background: rgba(255,255,255,0.022);
-  border: 1px solid var(--border-subtle);
-  border-left: 2px solid rgba(255,255,255,0.10);
-  border-radius: var(--radius-code);
-  padding: 14px 16px;
-  color: var(--text-secondary);
-  font-size: 14px;
-}
-```
-
-Warning and caution variants may shift the left border to a desaturated amber (`#8A7C5E`) or muted rust (`#8A6A62`) — nothing brighter. Note and tip stay fully neutral.
+A slightly different tint, a hairline border, a 2px left rule, and a small uppercase label. Note, tip and important stay neutral. Warning uses `--status-warn`, caution `--status-danger` — on the rule and the label only.
 
 ---
 
-## 12. Typography
+## 12. Navigation and contents
 
-Sans: **Inter**, with Geist, SF Pro, IBM Plex Sans, Manrope, Söhne as alternatives.
-Mono: **JetBrains Mono**, with Berkeley Mono, Geist Mono, IBM Plex Mono as alternatives.
+**Left nav** — the project tree. 13.5px rows, 32px minimum height, wrapping titles. Selected row: a lighter tint plus a 2px indicator. Read marks replace the page icon.
 
-Nothing futuristic. Documentation has to stay serious and readable.
-
-| Element | Size | Weight | Colour |
-|---|---|---|---|
-| H1 | 30–34px | 600 | `--text-heading` |
-| H2 | 21–23px | 600 | `--text-heading` |
-| H3 | 16–17px | 600 | `--text-primary` |
-| Body | 15px / 1.7 | 400 | `--text-secondary` |
-| Code | 13px / 1.65 | 400 | `--text-primary` |
-| Labels | 11px, uppercase, 0.06em | 500 | `--text-muted` |
-
-Headings are soft white, never `#FFFFFF`. Body text is grey, never pure white. The low contrast is deliberate — it's what makes long reading sessions comfortable, and raising it to "accessible-looking" contrast ratios breaks the entire feel. Keep body text at or above `--text-secondary`; that's the floor.
-
-Vertical rhythm: ~32px above an H2, ~24px above an H3, ~16px between paragraphs.
+**Right contents** — the quietest region. 10.5px uppercase label, 13px entries, H3s indented. A 1px rail fills as sections are read; the current entry gets a 2px bright segment. The active section is the last heading above 30% of the viewport, so a long section stays active until the next one starts.
 
 ---
 
-## 13. Buttons and inputs
+## 13. Motion
 
-Understated. Dark background, subtle outline, soft grey text.
-
-```css
-.button {
-  background: rgba(255,255,255,0.03);
-  border: 1px solid var(--border-visible);
-  border-radius: var(--radius-control);
-  color: var(--text-primary);
-  font-size: 13px;
-  padding: 7px 14px;
-  transition: background var(--dur-base) var(--ease);
-}
-.button:hover { background: rgba(255,255,255,0.055); }
-.button:active { background: rgba(255,255,255,0.04); }
-```
-
-No glowing buttons. No bright primary colour unless the user explicitly asks for one. The interface stays calm even when it's interactive.
+Slow, small, deliberate: 150–250ms on `--ease`. Animate opacity, background alpha and 1–4px translations. Contents links glide to their section; route changes jump (never animate the scroll position on navigation). Respect `prefers-reduced-motion` everywhere, including programmatic scrolling.
 
 ---
 
-## 14. Motion
+## 14. Prohibited
 
-Slow, small, deliberate. 150–250ms on `--ease`.
-
-Animate background alpha, opacity, and translations of 1–2px. Nothing bounces, nothing scales dramatically, nothing springs. The interface should feel stable — motion is feedback, not personality.
-
-Respect `prefers-reduced-motion` and drop to instant transitions.
-
----
-
-## 15. Prohibited
-
-- Glassmorphism, blur-heavy panels, frosted surfaces
-- Gloss, shine, reflections, metallic or plastic finishes
-- Glow effects of any kind
-- Neon, cyberpunk, saturated accents
-- Blue-tinted greys or purple-heavy palettes
-- Pure `#000000` backgrounds or pure `#FFFFFF` text
-- High contrast throughout
-- Cards for the sidebar, TOC, or header
-- A card-grid dashboard aesthetic
+- Any accent hue — emphasis is brightness and space
+- Blue-, green- or purple-tinted neutrals
+- Pure `#000` grounds or pure `#FFF` text on dark
+- `white/` or `black/` utilities for tints (use `ink/`)
+- Lines longer than ~80 characters
+- Editor controls above the content
+- Glassmorphism, glow, gloss, neon, gradients you can see
+- Cards for the rails or header; a card-grid dashboard look
 - More than three depth levels
-- Dramatic shadows or hard borders
-- Radii below 8px or pill shapes on content surfaces
-- Marketing-page patterns — hero sections, gradient CTAs, decorative illustration
+- Marketing patterns — hero sections, gradient CTAs, decorative illustration
 
-If the user asks for something on this list, build it their way — but say which rule it breaks first, so it's a decision rather than an accident.
+If someone asks for something on this list, build it their way — but say which rule it breaks first, so it's a decision rather than an accident.

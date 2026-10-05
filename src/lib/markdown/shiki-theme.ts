@@ -1,18 +1,17 @@
 import type { ThemeRegistration } from "shiki";
 
-// Built from the --syn-* tokens in theme.md §2. Nothing here may be brighter
-// than --text-primary, and the palette stays desaturated on purpose: if the
-// code looks colourful, the theme is wrong.
+// Colours are CSS variables, so highlighted code follows the reader's theme
+// (Graphite or Paper) without re-rendering. Values live in globals.css.
 const SYN = {
-  keyword: "#A9A3C2",
-  string: "#9FB09B",
-  func: "#A3B0BC",
-  variable: "#C9CACD",
-  number: "#B5AFA3",
-  comment: "#5B5E63",
-  punctuation: "#7A7D82",
-  text: "#E7E7E7",
-  bg: "#0D0E10",
+  keyword: "var(--syn-keyword)",
+  string: "var(--syn-string)",
+  func: "var(--syn-function)",
+  variable: "var(--syn-variable)",
+  number: "var(--syn-number)",
+  comment: "var(--syn-comment)",
+  punctuation: "var(--syn-punctuation)",
+  text: "var(--syn-text)",
+  bg: "transparent",
 };
 
 export const readmeSyntaxTheme: ThemeRegistration = {

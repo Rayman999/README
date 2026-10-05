@@ -1,88 +1,89 @@
-/* Component appearance is owned by README, never by document payloads. */
-.readme-document { color: var(--text-secondary); line-height: 1.75; overflow-wrap: anywhere; }
-.readme-document > * + * { margin-top: 24px; }
-.readme-document h2 { color: var(--text-heading); font-size: 23px; font-weight: 600; line-height: 1.3; scroll-margin-top: 96px; }
-.readme-document > h2:not(:first-child) { margin-top: 40px; }
-.readme-document h3 { color: var(--text-primary); font-size: 16px; font-weight: 550; line-height: 1.5; scroll-margin-top: 96px; }
+/* Structured document blocks. Base typography (paragraphs, headings, lists,
+   links, code, callouts, anchors) is shared with Markdown pages and lives in
+   globals.css; this file only covers the block types Markdown doesn't have. */
 .readme-document .rd-text { white-space: pre-wrap; }
-.readme-document ul, .readme-document ol { padding-left: 22px; }
-.readme-document ul { list-style: disc; }
-.readme-document ol { list-style: decimal; }
-.readme-document li + li { margin-top: 8px; }
+
+.rd-card, .rd-metrics > div, .rd-details, .rd-chart, .rd-diagram {
+  padding: 20px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-code);
+  background: rgb(var(--ink-rgb) / 0.02);
+}
 .rd-cards, .rd-metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 210px), 1fr)); gap: 12px; }
-.rd-card, .rd-metrics > div, .rd-callout, .rd-details, .rd-chart { padding: 20px; border: 1px solid var(--border-visible); border-radius: var(--radius-code); background: var(--surface-inset); }
-.rd-card h3 + p, .rd-callout h3 + p { margin-top: 8px; font-size: 14px; }
-.rd-eyebrow, .rd-metrics dt, .rd-unit { font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--text-secondary); }
-.rd-eyebrow { display: block; margin-bottom: 8px; }
-.rd-metrics dd { font-size: 28px; line-height: 1.35; color: var(--text-primary); font-variant-numeric: tabular-nums; margin-top: 8px; }
-.rd-metrics .rd-metric-detail { font-size: 12px; color: var(--text-secondary); }
-.rd-callout { border-left: 3px solid var(--syn-function); }
-.rd-tone-tip { border-left-color: var(--syn-string); }
-.rd-tone-warning { border-left-color: var(--syn-number); }
-.rd-code { background: var(--surface-inset); border: 1px solid var(--border-visible); border-radius: var(--radius-code); overflow: hidden; }
-.rd-code figcaption { color: var(--text-secondary); font-size: 12px; border-bottom: 1px solid var(--border-visible); padding: 8px 16px; }
-.rd-code pre { overflow-x: auto; padding: 16px; color: var(--text-primary); font-family: var(--font-mono); font-size: 13px; }
-.rd-table-scroll { overflow-x: auto; border: 1px solid var(--border-visible); border-radius: var(--radius-code); }
-.readme-document table { border-collapse: collapse; text-align: left; width: 100%; font-size: 13px; }
-.readme-document caption { text-align: left; padding: 14px; font-weight: 550; color: var(--text-primary); }
-.readme-document th, .readme-document td { padding: 12px 14px; border-top: 1px solid var(--border-visible); min-width: 110px; vertical-align: top; }
-.readme-document thead { background: var(--surface-inset); color: var(--text-primary); }
-.readme-document .rd-timeline { list-style: none; padding-left: 20px; border-left: 1px solid var(--border-visible); }
-.rd-timeline li { position: relative; padding-bottom: 16px; }
-.rd-timeline li::before { content: ""; position: absolute; left: -24px; top: 8px; width: 7px; height: 7px; border-radius: 50%; background: var(--syn-function); }
-.rd-timeline p { margin-top: 6px; font-size: 14px; }
-.readme-document summary { cursor: pointer; color: var(--text-primary); font-size: 13px; }
-.rd-details[open] summary { margin-bottom: 14px; }
+.readme-document .rd-card h3, .readme-document .rd-callout h3 { margin: 0; font-size: 1em; }
+.rd-card h3 + p, .rd-callout h3 + p { margin-top: 6px; font-size: .94em; }
+.rd-card p { color: var(--text-secondary); }
+
+.rd-eyebrow, .rd-metrics dt, .rd-unit {
+  font-family: var(--font-sans);
+  font-size: 11px; font-weight: 600; letter-spacing: .07em; text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+.rd-eyebrow { display: block; margin-bottom: 6px; }
+.rd-tone-warning .rd-eyebrow { color: var(--status-warn); }
+.rd-metrics dd { margin-top: 6px; color: var(--text-heading); font-family: var(--font-sans); font-size: 28px; font-weight: 600; line-height: 1.25; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+.rd-metrics .rd-metric-detail { margin-top: 4px; color: var(--text-secondary); font-size: 12.5px; font-weight: 400; letter-spacing: 0; }
+
+/* Tables */
+.rd-table-scroll { overflow-x: auto; border: 1px solid var(--border-subtle); border-radius: var(--radius-code); }
+.readme-document table { width: 100%; border-collapse: collapse; text-align: left; font-family: var(--font-sans); font-size: .84em; line-height: 1.55; font-variant-numeric: tabular-nums; }
+.readme-document caption { padding: 14px 16px 10px; color: var(--text-primary); font-weight: 600; text-align: left; }
+.readme-document th, .readme-document td { min-width: 110px; padding: 10px 16px; border-top: 1px solid var(--border-faint); vertical-align: top; }
+.readme-document thead th { border-top-color: var(--border-subtle); color: var(--text-primary); font-weight: 600; }
+.readme-document tbody th { color: var(--text-primary); font-weight: 500; }
+
+/* Timeline */
+.readme-document .rd-timeline { list-style: none; padding-left: 22px; border-left: 1px solid var(--border-visible); margin-left: 4px; }
+.rd-timeline li { position: relative; padding-bottom: 18px; }
+.rd-timeline li:last-child { padding-bottom: 0; }
+.rd-timeline li::before { content: ""; position: absolute; left: -26.5px; top: .55em; width: 8px; height: 8px; border: 2px solid var(--surface-raised); border-radius: 50%; background: var(--text-secondary); }
+.readme-document .rd-timeline h3 { margin: 0; font-size: 1em; }
+.rd-timeline p { margin-top: 4px; color: var(--text-secondary); font-size: .94em; }
+
+/* Disclosure */
+.readme-document summary { color: var(--text-primary); font-family: var(--font-sans); font-size: 14px; font-weight: 500; }
+.rd-details[open] summary { margin-bottom: 12px; }
 .readme-document summary:focus-visible, .rd-table-scroll:focus-visible { outline: 2px solid var(--text-secondary); outline-offset: 4px; }
-.rd-chart figcaption { font-weight: 550; color: var(--text-primary); }
-.rd-unit { display: block; margin-top: 4px; }
-.rd-bars { display: grid; gap: 14px; margin: 24px 0; }
-.rd-bar-row { display: grid; grid-template-columns: minmax(60px, 1fr) minmax(40px, 2fr) auto; align-items: center; gap: 12px; font-size: 12px; font-variant-numeric: tabular-nums; }
-.rd-bar-track { height: 10px; background: var(--surface-raised); border-radius: 3px; }
-.rd-bar-fill { height: 100%; background: var(--syn-function); border-radius: 3px; }
+
+/* Charts */
+.rd-chart figcaption { color: var(--text-primary); font-family: var(--font-sans); font-weight: 600; }
+.rd-unit { display: block; margin-top: 4px; font-weight: 500; }
+.rd-bars { display: grid; gap: 12px; margin: 22px 0; }
+.rd-bar-row { display: grid; grid-template-columns: minmax(60px, 1fr) minmax(40px, 2.4fr) auto; align-items: center; gap: 12px; font-family: var(--font-sans); font-size: 12.5px; font-variant-numeric: tabular-nums; }
+.rd-bar-track { height: 8px; border-radius: 4px; background: rgb(var(--ink-rgb) / 0.06); }
+.rd-bar-fill { height: 100%; border-radius: 4px; background: var(--syn-function); }
 .rd-line-chart { width: 100%; height: auto; margin-top: 20px; overflow: visible; }
-.rd-gridline { stroke: var(--border-visible); }
+.rd-gridline { stroke: var(--border-subtle); }
 .rd-line { stroke: var(--syn-function); stroke-width: 2; fill: none; }
-.rd-dot { fill: var(--syn-function); }
-.rd-line-chart text { fill: var(--text-secondary); font-size: 11px; }
-.rd-chart-range { text-align: center; font-size: 12px; }
-.rd-chart-data { margin-top: 18px; }
+.rd-dot { fill: var(--syn-function); stroke: var(--surface-raised); stroke-width: 2; }
+.rd-line-chart text { fill: var(--text-tertiary); font-family: var(--font-sans); font-size: 11px; }
+.rd-chart-range { color: var(--text-tertiary); font-family: var(--font-sans); font-size: 12px; text-align: center; }
+.rd-chart-data { margin-top: 16px; }
 .rd-chart-data .rd-table-scroll { margin-top: 12px; }
-/* Heading anchors. Hidden until the heading is hovered or the link itself is
-   focused, so they never compete with the text, but they stay reachable by
-   keyboard. Inline rather than in the margin: a negative offset clips on
-   narrow screens. */
-.rd-anchor { margin-left: 10px; font-weight: 400; color: var(--text-muted); text-decoration: none; opacity: 0; transition: opacity var(--dur-base) var(--ease), color var(--dur-base) var(--ease); }
-.readme-document h2:hover .rd-anchor, .readme-document h3:hover .rd-anchor, .rd-anchor:focus-visible { opacity: 1; }
-.rd-anchor:hover { color: var(--text-secondary); }
-@media (hover: none) { .rd-anchor { opacity: 0.4; } }
+.rd-chart-data ol { margin-top: 10px; font-size: .9em; }
 
-/* Diagrams. Same raised-panel treatment as charts, drawn entirely from theme
-   tokens so a flow reads as part of the page rather than as pasted-in artwork. */
-.rd-diagram { border: 1px solid var(--border-subtle); border-radius: var(--radius-code); background: var(--surface-inset); padding: 20px; }
-.rd-diagram figcaption { font-weight: 550; color: var(--text-primary); }
+/* Diagrams — drawn entirely from theme tokens so a flow reads as part of the
+   page rather than as pasted-in artwork. */
+.rd-diagram figcaption { color: var(--text-primary); font-family: var(--font-sans); font-weight: 600; }
 .rd-diagram-scroll { margin-top: 18px; overflow-x: auto; }
-/* Deliberately not max-width:100%. Scaling a wide flow down to the column
-   width shrinks its labels past legibility; scrolling keeps them readable, and
-   the region is focusable with a text description underneath. */
+/* Deliberately not max-width:100%: scaling a wide flow down shrinks its labels
+   past legibility; scrolling keeps them readable. */
 .rd-diagram-svg { display: block; margin: 0 auto; overflow: visible; }
-
 .rd-diagram-edge { fill: none; stroke: var(--border-visible); stroke-width: 1.5; }
 .rd-diagram-head { fill: var(--text-muted); }
-.rd-diagram-label-bg { fill: var(--surface-inset); }
-.rd-diagram-label { fill: var(--text-muted); font-size: 10.5px; font-family: var(--font-sans); }
-
-.rd-diagram-node rect { fill: var(--surface-raised); stroke: var(--border-visible); stroke-width: 1; }
-.rd-diagram-title { fill: var(--text-primary); font-size: 13px; font-weight: 550; font-family: var(--font-sans); }
-.rd-diagram-detail { fill: var(--text-muted); font-size: 11px; font-family: var(--font-sans); }
-
-/* Roles are distinguished by a quiet border tint, not by colour blocks - the
-   palette here is deliberately narrow. */
+.rd-diagram-label-bg { fill: var(--surface-raised); }
+.rd-diagram-label { fill: var(--text-tertiary); font-size: 10.5px; font-family: var(--font-sans); }
+.rd-diagram-node rect { fill: var(--surface-raised-top); stroke: var(--border-visible); stroke-width: 1; }
+.rd-diagram-title { fill: var(--text-primary); font-size: 13px; font-weight: 600; font-family: var(--font-sans); }
+.rd-diagram-detail { fill: var(--text-tertiary); font-size: 11px; font-family: var(--font-sans); }
+/* Roles are a quiet border tint, not colour blocks. */
 .rd-role-actor rect { stroke: var(--syn-function); }
 .rd-role-system rect { stroke: var(--syn-keyword); }
 .rd-role-store rect { stroke: var(--syn-string); }
 .rd-role-decision rect { stroke: var(--syn-number); stroke-dasharray: 4 3; }
-
 .rd-diagram-scroll:focus-visible { outline: 2px solid var(--text-secondary); outline-offset: 4px; }
 
-@media (max-width: 480px) { .rd-chart, .rd-card, .rd-callout, .rd-details, .rd-diagram { padding: 14px; } .rd-bar-row { gap: 8px; } }
+@media (max-width: 480px) {
+  .rd-chart, .rd-card, .rd-callout, .rd-details, .rd-diagram { padding: 14px; }
+  .rd-bar-row { gap: 8px; }
+}

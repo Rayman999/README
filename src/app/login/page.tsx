@@ -61,7 +61,7 @@ export default async function LoginPage({
     <main id="main-content" tabIndex={-1} className="flex min-h-screen flex-col items-center justify-center px-6 py-16">
       <div className="stagger w-full max-w-[392px]">
         <div className="flex flex-col items-center">
-          <span className="flex h-10 w-10 items-center justify-center rounded-[12px] border border-border-visible bg-white/[0.035] text-tertiary">
+          <span className="flex h-10 w-10 items-center justify-center rounded-[12px] border border-border-visible bg-ink/[0.035] text-tertiary">
             <svg
               width="17"
               height="17"
@@ -89,7 +89,7 @@ export default async function LoginPage({
         {errorMessage && (
           <div
             role="alert"
-            className="mt-7 rounded-code border border-border-subtle bg-white/[0.022] px-4 py-3 text-[13px] leading-relaxed text-secondary"
+            className="mt-7 rounded-code border border-border-subtle bg-ink/[0.022] px-4 py-3 text-[13px] leading-relaxed text-secondary"
             style={{ borderLeft: "2px solid #8A6A62" }}
           >
             {errorMessage}

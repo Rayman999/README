@@ -27,6 +27,7 @@ const schema: typeof defaultSchema = {
     "*": [...(defaultSchema.attributes?.["*"] ?? []), "className", "id"],
     code: [["className", /^language-./]],
     a: [...(defaultSchema.attributes?.a ?? []), "target", "rel"],
+    div: [...(defaultSchema.attributes?.div ?? []), ["dataAlert", /^(NOTE|TIP|IMPORTANT|WARNING|CAUTION)$/]],
   },
   tagNames: (defaultSchema.tagNames ?? []).filter(
     (t) => !["script", "style", "iframe", "object", "embed"].includes(t),
@@ -39,13 +40,6 @@ const ALERTS: Record<string, string> = {
   IMPORTANT: "Important",
   WARNING: "Warning",
   CAUTION: "Caution",
-};
-
-// Warning and caution may shift the left border to a desaturated amber or
-// muted rust (theme.md §11). Everything else stays neutral.
-const ALERT_BORDER: Record<string, string> = {
-  WARNING: "#8A7C5E",
-  CAUTION: "#8A6A62",
 };
 
 /** GitHub alert syntax: a blockquote whose first line is `[!NOTE]`. */
@@ -70,10 +64,7 @@ function remarkGithubAlerts() {
         hName: "div",
         hProperties: {
           className: ["callout"],
-          "data-alert": kind,
-          style: ALERT_BORDER[kind]
-            ? `border-left-color:${ALERT_BORDER[kind]}`
-            : undefined,
+          dataAlert: kind,
         },
       };
       node.children.unshift({
@@ -103,6 +94,26 @@ function collectHeadings(tree: Root, out: Heading[]) {
 }
 
 /**
+ * A copyable address on every h2/h3. Runs after sanitising and after the
+ * outline is collected, so the "#" never leaks into heading text.
+ */
+function rehypeHeadingAnchors() {
+  return (tree: Root) => {
+    visit(tree, "element", (node: Element) => {
+      if (node.tagName !== "h2" && node.tagName !== "h3") return;
+      const id = String(node.properties?.id ?? "");
+      if (!id) return;
+      node.children.push({
+        type: "element",
+        tagName: "a",
+        properties: { href: `#${id}`, className: ["rd-anchor"], ariaLabel: `Link to ${hastToString(node)}` },
+        children: [{ type: "text", value: "#" }],
+      });
+    });
+  };
+}
+
+/**
  * Highlight fenced code with Shiki after sanitising. Supports an optional
  * `title=` on the info string, e.g. ```ts title=src/server.ts
  */
@@ -126,9 +137,12 @@ async function highlight(html: string): Promise<string> {
       rendered = await codeToHtml(code, { lang: "text", theme: readmeSyntaxTheme });
     }
 
+    // `lang` is limited to [A-Za-z0-9+#-] by the regex above, so it is safe to
+    // interpolate. The copy button is wired up by the reader on the client.
+    const label = lang === "text" ? "" : lang;
     out = out.replace(
       full,
-      `<div class="code-block"><div class="code-block__body">${rendered}</div></div>`,
+      `<div class="code-block"><div class="code-block__bar"><span>${label}</span><button type="button" class="code-copy" data-copy>Copy</button></div>${rendered}</div>`,
     );
   }
 
@@ -157,6 +171,7 @@ export async function renderMarkdown(
     .use(rehypeSlug)
     .use(rehypeSanitize, schema)
     .use(() => (tree: Root) => collectHeadings(tree, headings))
+    .use(rehypeHeadingAnchors)
     .use(rehypeStringify)
     .process(source);
 

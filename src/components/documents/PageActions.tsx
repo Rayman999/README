@@ -65,7 +65,7 @@ export function PageActions({
   const working = busy || pending;
 
   return (
-    <div className="mb-7 rounded-control border border-border-subtle bg-white/[0.018] px-4 py-3">
+    <div className="mb-7 rounded-control border border-border-subtle bg-ink/[0.018] px-4 py-3">
       <div className="flex flex-wrap items-center gap-x-5 gap-y-3">
         {editable && (
           <Link
@@ -116,7 +116,7 @@ export function PageActions({
                     () => { router.push(projectHref); router.refresh(); },
                   )
                 }
-                className="ease-base rounded-control border px-3 py-1.5 text-[12px] text-primary transition-colors duration-200 hover:bg-white/[0.06] disabled:opacity-50"
+                className="ease-base rounded-control border px-3 py-1.5 text-[12px] text-primary transition-colors duration-200 hover:bg-ink/[0.06] disabled:opacity-50"
                 style={{ borderColor: "rgba(138,106,98,0.55)" }}
               >
                 {working ? "Deleting…" : "Delete"}

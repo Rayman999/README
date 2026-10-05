@@ -173,20 +173,6 @@ export async function getPageBySlug(projectId: string, slug: string) {
  * (top-level) pages last. Not specified in BUILD.md — chosen to match what
  * the reader just saw in the nav rather than a separate ordering.
  */
-export async function getPageNeighbours(projectId: string, pageId: string) {
-  const tree = await getProjectTree(projectId);
-  const flat = [
-    ...tree.sections.flatMap((s) => s.pages),
-    ...tree.loosePages,
-  ];
-  const index = flat.findIndex((p) => p.id === pageId);
-  if (index === -1) return { previous: null, next: null };
-  return {
-    previous: index > 0 ? flat[index - 1] : null,
-    next: index < flat.length - 1 ? flat[index + 1] : null,
-  };
-}
-
 export async function createPage(input: {
   projectId: string;
   sectionId: string | null;
