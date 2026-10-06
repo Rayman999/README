@@ -15,6 +15,7 @@ import { PageActions } from "@/components/documents/PageActions";
 import { PageHistory } from "@/components/documents/PageHistory";
 import { FocusToggle, SkimToggle } from "@/components/reading/ReadingPreferences";
 import { Highlights } from "@/components/reading/Highlights";
+import { CopyForAI } from "@/components/reading/CopyForAI";
 import { getProgressForProject, listHighlightsForPage } from "@/lib/reading/server";
 import { CompletionNote, ReaderRuntime } from "@/components/reading/ReaderRuntime";
 import { InlineOutline } from "@/components/shell/Toc";
@@ -96,6 +97,7 @@ export default async function DocPage({
   const navSections: NavSection[] = tree.sections.map((s) => ({
     slug: s.slug,
     title: s.title,
+    description: s.description,
     pages: s.pages.map((p) => ({
       id: p.id,
       slug: p.slug,
@@ -174,6 +176,7 @@ export default async function DocPage({
               {page.authorType === "agent" && <span>Written by an agent</span>}
             </div>
             <div className="reader-tools">
+              <CopyForAI project={project.slug} page={page.slug} />
               <SkimToggle />
               <FocusToggle />
               <PageHistory project={project.slug} page={page.slug} />

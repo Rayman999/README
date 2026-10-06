@@ -8,6 +8,8 @@ export type NavPage = {
 export type NavSection = {
   slug: string;
   title: string;
+  /** What belongs in the section; shown as a hint in the sidebar. */
+  description?: string;
   pages: NavPage[];
 };
 

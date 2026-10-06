@@ -75,7 +75,8 @@ test("OAuth + actual MCP transport: isolation, permissions, revisions, replay an
     });
     await client.connect(transport);
     const listed = await client.listTools();
-    assert.equal(listed.tools.length, 7);
+    assert.equal(listed.tools.length, 10);
+    assert.equal(listed.tools.find((t) => t.name === "move_document")?.annotations?.readOnlyHint, false);
     assert.equal(listed.tools.find((t) => t.name === "create_document")?.annotations?.readOnlyHint, false);
     const projectsResult = await client.callTool({ name: "list_projects", arguments: {} });
     assert.equal((projectsResult.structuredContent as { projects: unknown[] }).projects.length, 1);
@@ -98,6 +99,19 @@ test("OAuth + actual MCP transport: isolation, permissions, revisions, replay an
     assert.equal(revisions[0].authorId, userId);
     await db.update(s.pages).set({ status: "stable" }).where(eq(s.pages.id, revisions[0].pageId));
     assert.equal((await callTool(ctx, "update_document", { project: "test", page: "agent-draft", title: "No", description: "No", document: starterDocument, expectedVersion: 2 })).isError, true);
+
+    // Organising: the layout says what each section is for, and agents can file pages into it.
+    assert.equal((await callTool(ctx, "create_section", { project: "test", slug: "decisions", title: "Decisions", purpose: "Why we chose what we chose." })).isError, undefined);
+    assert.equal((await callTool(ctx, "create_section", { project: "test", slug: "decisions", title: "Again", purpose: "Duplicate." })).isError, true);
+    assert.equal((await callTool(ctx, "move_document", { project: "test", page: "agent-draft", section: "missing" })).isError, true);
+    assert.equal((await callTool(ctx, "move_document", { project: "test", page: "agent-draft", section: "decisions" })).isError, undefined);
+    const organised = (await callTool(ctx, "get_project_context", { project: "test" })).structuredContent as {
+      layout: { sections: { slug: string; purpose: string; pages: number }[] };
+      pages: { slug: string; section: string | null }[];
+    };
+    assert.equal(organised.layout.sections.find((entry) => entry.slug === "decisions")?.purpose, "Why we chose what we chose.");
+    assert.equal(organised.layout.sections.find((entry) => entry.slug === "decisions")?.pages, 1);
+    assert.equal(organised.pages.find((entry) => entry.slug === "agent-draft")?.section, "decisions");
 
     await db.update(s.workspaceMembers).set({ role: "viewer" }).where(and(eq(s.workspaceMembers.workspaceId, workspaceId), eq(s.workspaceMembers.userId, userId)));
     const readOnly = await oauth.authenticateBearer(`Bearer ${tokens.access_token}`);

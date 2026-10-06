@@ -178,6 +178,9 @@ export const sections = pgTable(
       .references(() => projects.id, { onDelete: "cascade" }),
     slug: text("slug").notNull(),
     title: text("title").notNull(),
+    // What belongs here, in one sentence. Lets people and agents decide where
+    // a page goes without guessing from the title alone.
+    description: text("description").notNull().default(""),
     position: integer("position").notNull(),
   },
   (t) => [uniqueIndex("sections_project_slug_idx").on(t.projectId, t.slug)],

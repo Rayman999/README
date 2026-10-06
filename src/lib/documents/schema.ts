@@ -106,6 +106,52 @@ export function documentText(doc: ReadmeDocument): string {
   return pieces.join("\n");
 }
 
+const cell = (value: string) => value.replace(/\|/g, "\\|").replace(/\n/g, " ");
+function markdownTable(columns: string[], rows: string[][]) {
+  return [
+    `| ${columns.map(cell).join(" | ")} |`,
+    `| ${columns.map(() => "---").join(" | ")} |`,
+    ...rows.map((row) => `| ${row.map(cell).join(" | ")} |`),
+  ].join("\n");
+}
+
+/** Faithful Markdown for a structured document, for pasting into an AI chat. */
+export function documentToMarkdown(doc: ReadmeDocument): string {
+  const out: string[] = [];
+  if (doc.keyFacts.length) out.push("**Key facts**\n\n" + doc.keyFacts.map((fact) => `- ${fact}`).join("\n"));
+  for (const block of doc.blocks) {
+    switch (block.type) {
+      case "heading": out.push(`${"#".repeat(block.level)} ${block.text}`); break;
+      case "paragraph": out.push(block.text); break;
+      case "list": out.push(block.items.map((item, i) => `${block.ordered ? `${i + 1}.` : "-"} ${item}`).join("\n")); break;
+      case "callout": out.push(`> **${block.tone[0].toUpperCase()}${block.tone.slice(1)}: ${block.title}**\n>\n> ${block.text.replace(/\n/g, "\n> ")}`); break;
+      case "code": out.push(`\`\`\`${block.language}\n${block.code}\n\`\`\``); break;
+      case "table": out.push(`**${block.title}**\n\n${markdownTable(block.columns, block.rows)}`); break;
+      case "cards": out.push(block.items.map((item) => `- **${item.title}** — ${item.text}`).join("\n")); break;
+      case "metrics": out.push(block.items.map((item) => `- **${item.label}:** ${item.value}${item.detail ? ` (${item.detail})` : ""}`).join("\n")); break;
+      case "timeline": out.push(block.items.map((item, i) => `${i + 1}. **${item.title}** — ${item.text}`).join("\n")); break;
+      case "details": out.push(`**${block.title}**\n\n${block.text}`); break;
+      case "chart": out.push(`**${block.title}**${block.unit ? ` (${block.unit})` : ""}\n\n${markdownTable(["Label", "Value"], block.data.map((item) => [item.label, String(item.value)]))}`); break;
+      case "diagram": {
+        const label = new Map(block.nodes.map((node) => [node.id, node.label]));
+        out.push([
+          `**Diagram: ${block.title}**`,
+          "",
+          ...block.nodes.map((node) => `- ${node.label}${node.detail ? ` — ${node.detail}` : ""}${node.role !== "default" ? ` (${node.role})` : ""}`),
+          "",
+          "Flow:",
+          ...block.edges.map((edge) => `- ${label.get(edge.from) ?? edge.from} → ${label.get(edge.to) ?? edge.to}${edge.label ? ` (${edge.label})` : ""}`),
+        ].join("\n"));
+        break;
+      }
+    }
+  }
+  if (doc.codePaths.length) out.push("## Code paths\n\n" + doc.codePaths.map((path) => `- \`${path}\``).join("\n"));
+  if (doc.relatedPages.length) out.push("## Related pages\n\n" + doc.relatedPages.map((page) => `- ${page}`).join("\n"));
+  if (doc.openQuestions.length) out.push("## Open questions\n\n" + doc.openQuestions.map((question) => `- ${question}`).join("\n"));
+  return out.join("\n\n");
+}
+
 export function documentHeadings(doc: ReadmeDocument) {
   return doc.blocks.flatMap((block, i) => block.type === "heading" ? [{ id: `doc-section-${i}`, text: block.text, level: block.level }] : []);
 }

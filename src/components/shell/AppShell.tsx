@@ -102,6 +102,7 @@ function SidebarNav({
             <button
               type="button"
               aria-expanded={!isCollapsed}
+              title={section.description || undefined}
               onClick={() => toggle(section.slug)}
               className="ease-base flex w-full items-center gap-1.5 rounded-control px-2 py-1 text-[11px] font-medium tracking-[0.06em] text-muted uppercase transition-colors duration-200 hover:text-tertiary"
             >

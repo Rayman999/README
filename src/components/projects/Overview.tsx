@@ -6,7 +6,7 @@ import { useNextRead, type ReadablePage } from "@/components/reading/ReadMarks";
 import { formatMinutes } from "@/lib/reading/format";
 
 export type OverviewPage = ReadablePage & { slug: string; minutes: number };
-export type OverviewSection = { id: string; slug: string; title: string; pages: OverviewPage[] };
+export type OverviewSection = { id: string; slug: string; title: string; description: string; pages: OverviewPage[] };
 
 
 function useReadMinutes(pages: OverviewPage[]) {

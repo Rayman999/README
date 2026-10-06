@@ -5,6 +5,7 @@ import { updateSection } from "@/lib/projects";
 
 const patchSchema = z.object({
   title: z.string().trim().min(1).max(120).optional(),
+  description: z.string().trim().max(300).optional(),
   position: z.number().int().min(0).optional(),
 });
 

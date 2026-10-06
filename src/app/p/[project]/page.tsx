@@ -103,10 +103,11 @@ export default async function ProjectPage({
       id: section.id,
       slug: section.slug,
       title: section.title,
+      description: section.description,
       pages: section.pages.map((page) => toPage(page, `${projectHref}/${section.slug}/${page.slug}`)),
     })),
     ...(tree.loosePages.length
-      ? [{ id: "loose", slug: "more", title: tree.sections.length ? "More pages" : "Pages", pages: tree.loosePages.map((page) => toPage(page, `${projectHref}/${page.slug}`)) }]
+      ? [{ id: "loose", slug: "more", title: tree.sections.length ? "More pages" : "Pages", description: "", pages: tree.loosePages.map((page) => toPage(page, `${projectHref}/${page.slug}`)) }]
       : []),
   ];
   const readingOrder = chapters.flatMap((chapter) => chapter.pages);
@@ -115,6 +116,7 @@ export default async function ProjectPage({
   const navSections: NavSection[] = chapters.map((chapter) => ({
     slug: chapter.slug,
     title: chapter.title,
+    description: chapter.description,
     pages: chapter.pages.map((page) => ({ id: page.id, slug: page.href, title: page.title, href: page.href })),
   }));
 
@@ -268,6 +270,7 @@ export default async function ProjectPage({
                       <span className="ov-chapter-index" aria-hidden>{String(index + 1).padStart(2, "0")}</span>
                       <h3>{chapter.title}</h3>
                       <ChapterProgress pages={chapter.pages} />
+                      {chapter.description && <p className="ov-chapter-purpose">{chapter.description}</p>}
                     </header>
                     <ul>
                       {chapter.pages.map((page) => <PageRow key={page.id} page={page} badge={changed.get(page.id)} />)}
@@ -279,7 +282,7 @@ export default async function ProjectPage({
 
             {editor && (
               <div className="ov-organise">
-                <SectionManager project={project.slug} sections={tree.sections.map((entry) => ({ id: entry.id, slug: entry.slug, title: entry.title, position: entry.position, pageCount: entry.pages.length }))} />
+                <SectionManager project={project.slug} sections={tree.sections.map((entry) => ({ id: entry.id, slug: entry.slug, title: entry.title, description: entry.description, position: entry.position, pageCount: entry.pages.length }))} />
               </div>
             )}
 

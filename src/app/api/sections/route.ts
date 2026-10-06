@@ -13,6 +13,7 @@ const createSchema = z.object({
   project: z.string().trim().min(1),
   title: z.string().trim().min(1).max(120),
   slug: z.string().trim().min(1).max(96).optional(),
+  description: z.string().trim().max(300).optional(),
 });
 
 export async function GET(req: Request) {
@@ -61,6 +62,6 @@ export async function POST(req: Request) {
     return conflict(`A section with the slug "${slug}" already exists in this project.`);
   }
 
-  const section = await createSection({ projectId: project.id, slug, title: data.title });
+  const section = await createSection({ projectId: project.id, slug, title: data.title, description: data.description });
   return Response.json({ section }, { status: 201 });
 }

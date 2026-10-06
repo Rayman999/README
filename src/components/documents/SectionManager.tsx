@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 
-type Section = { id: string; slug: string; title: string; position: number; pageCount: number };
+type Section = { id: string; slug: string; title: string; description: string; position: number; pageCount: number };
 
 /**
  * Manual section management for editors. Sections group pages in the sidebar
@@ -18,6 +18,8 @@ export function SectionManager({ project, sections }: { project: string; section
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState("");
+  const [purpose, setPurpose] = useState("");
+  const [draftPurpose, setDraftPurpose] = useState("");
   const [renaming, setRenaming] = useState<string | null>(null);
   const [draft, setDraft] = useState("");
   const [error, setError] = useState("");
@@ -80,9 +82,9 @@ export function SectionManager({ project, sections }: { project: string; section
               void send(
                 () => fetch("/api/sections", {
                   method: "POST", headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({ project, title: title.trim() }),
+                  body: JSON.stringify({ project, title: title.trim(), description: purpose.trim() }),
                 }),
-                () => setTitle(""),
+                () => { setTitle(""); setPurpose(""); },
               );
             }}
           >
@@ -92,8 +94,17 @@ export function SectionManager({ project, sections }: { project: string; section
               maxLength={120}
               disabled={working}
               onChange={(event) => setTitle(event.target.value)}
-              placeholder="Guides"
+              placeholder="Section title, e.g. Architecture"
               className="ease-base min-w-[180px] flex-1 rounded-input border border-border-visible bg-inset px-3 py-2 text-[13px] text-primary transition-colors duration-200 outline-none placeholder:text-muted focus:border-ink/[0.16]"
+            />
+            <input
+              aria-label="What belongs in this section"
+              value={purpose}
+              maxLength={300}
+              disabled={working}
+              onChange={(event) => setPurpose(event.target.value)}
+              placeholder="What belongs here, e.g. How Tilde is designed and why"
+              className="ease-base min-w-[240px] flex-[2] rounded-input border border-border-visible bg-inset px-3 py-2 text-[13px] text-primary transition-colors duration-200 outline-none placeholder:text-muted focus:border-ink/[0.16]"
             />
             <button
               type="submit"
@@ -121,7 +132,7 @@ export function SectionManager({ project, sections }: { project: string; section
                         void send(
                           () => fetch(`/api/sections/${section.id}`, {
                             method: "PATCH", headers: { "Content-Type": "application/json" },
-                            body: JSON.stringify({ title: draft.trim() }),
+                            body: JSON.stringify({ title: draft.trim(), description: draftPurpose.trim() }),
                           }),
                           () => setRenaming(null),
                         );
@@ -135,6 +146,14 @@ export function SectionManager({ project, sections }: { project: string; section
                         onChange={(event) => setDraft(event.target.value)}
                         className="ease-base min-w-[160px] flex-1 rounded-input border border-border-visible bg-inset px-2.5 py-1.5 text-[13px] text-primary outline-none focus:border-ink/[0.16]"
                       />
+                      <input
+                        aria-label={`What belongs in ${section.title}`}
+                        value={draftPurpose}
+                        maxLength={300}
+                        placeholder="What belongs here"
+                        onChange={(event) => setDraftPurpose(event.target.value)}
+                        className="ease-base min-w-[200px] flex-[2] rounded-input border border-border-visible bg-inset px-2.5 py-1.5 text-[13px] text-primary outline-none placeholder:text-muted focus:border-ink/[0.16]"
+                      />
                       <button type="submit" disabled={working} className="ease-base rounded-control border border-border-visible px-2.5 py-1.5 text-[12px] text-primary hover:bg-state-hover disabled:opacity-50">Save</button>
                       <button type="button" onClick={() => setRenaming(null)} className="ease-base rounded-control px-2 py-1.5 text-[12px] text-muted hover:text-secondary">Cancel</button>
                     </form>
@@ -142,6 +161,7 @@ export function SectionManager({ project, sections }: { project: string; section
                     <>
                       <span className="min-w-0 flex-1">
                         <span className="block truncate text-[13.5px] text-primary">{section.title}</span>
+                        {section.description && <span className="block text-[12.5px] text-secondary">{section.description}</span>}
                         <span className="block truncate text-[11.5px] text-muted">
                           {section.slug} · {section.pageCount} page{section.pageCount === 1 ? "" : "s"}
                         </span>
@@ -152,10 +172,10 @@ export function SectionManager({ project, sections }: { project: string; section
                         <button
                           type="button"
                           disabled={working}
-                          onClick={() => { setRenaming(section.id); setDraft(section.title); }}
+                          onClick={() => { setRenaming(section.id); setDraft(section.title); setDraftPurpose(section.description); }}
                           className="ease-base rounded-control px-2.5 py-1.5 text-[12px] text-muted hover:bg-state-hover hover:text-secondary disabled:opacity-50"
                         >
-                          Rename
+                          Edit
                         </button>
                       </span>
                     </>
@@ -167,8 +187,8 @@ export function SectionManager({ project, sections }: { project: string; section
 
           {error && <p role="alert" className="mt-3 text-[12px] leading-relaxed text-secondary">{error}</p>}
           <p className="mt-3 text-[11.5px] leading-relaxed text-muted">
-            A section&rsquo;s slug is fixed when it is created, because page URLs are built from it.
-            Assign a page to a section from the composer.
+            A section&rsquo;s purpose tells readers and AI agents what belongs in it, so agents can file new pages
+            in the right place. Its slug is fixed when it is created. Assign a page to a section from the composer.
           </p>
         </div>
       )}

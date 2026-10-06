@@ -118,6 +118,7 @@ export async function createSection(input: {
   projectId: string;
   slug: string;
   title: string;
+  description?: string;
 }) {
   const [{ value: count }] = await db
     .select({ value: sql<number>`count(*)::int` })
@@ -130,6 +131,7 @@ export async function createSection(input: {
       projectId: input.projectId,
       slug: input.slug,
       title: input.title,
+      description: input.description ?? "",
       position: count,
     })
     .returning();
@@ -138,7 +140,7 @@ export async function createSection(input: {
 
 export async function updateSection(
   id: string,
-  patch: Partial<{ title: string; position: number }>,
+  patch: Partial<{ title: string; description: string; position: number }>,
 ) {
   const [row] = await db
     .update(sections)
@@ -146,6 +148,23 @@ export async function updateSection(
     .where(eq(sections.id, id))
     .returning();
   return row;
+}
+
+/**
+ * Moves a page into a section (or to the top level) at the end of it. Only
+ * the grouping changes: pages are addressed by slug, so old links redirect.
+ */
+export async function movePageToSection(projectId: string, pageId: string, sectionId: string | null) {
+  const [{ value: position }] = await db
+    .select({ value: sql<number>`coalesce(max(${pages.position}) + 1, 0)::int` })
+    .from(pages)
+    .where(and(eq(pages.projectId, projectId), sectionId ? eq(pages.sectionId, sectionId) : isNull(pages.sectionId), isNull(pages.deletedAt)));
+  const [row] = await db
+    .update(pages)
+    .set({ sectionId, position, updatedAt: new Date() })
+    .where(and(eq(pages.id, pageId), eq(pages.projectId, projectId)))
+    .returning({ id: pages.id, slug: pages.slug, sectionId: pages.sectionId });
+  return row ?? null;
 }
 
 // ---------------------------------------------------------------------------
