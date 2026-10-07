@@ -35,7 +35,7 @@ export function PageHistory({ project, page }: { project: string; page: string }
   const close = () => dialog.current?.close();
 
   return <>
-    <button type="button" className="history-trigger" onClick={() => void open()}>
+    <button type="button" className="history-trigger" title="Page history" onClick={() => void open()}>
       <span aria-hidden>↺</span> Page history
     </button>
     <dialog ref={dialog} className="history-dialog" onCancel={event => { event.preventDefault(); close(); }} onClick={event => { if (event.target === dialog.current) close(); }}>

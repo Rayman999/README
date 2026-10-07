@@ -11,8 +11,8 @@ import { Icon, ICONS } from "@/components/shell/icons";
 import { SectionManager } from "@/components/documents/SectionManager";
 import { LearningPaths } from "@/components/documents/LearningPaths";
 import { ReadMark } from "@/components/reading/ReadMarks";
-import { ChapterProgress, ReadingMap, StartCard, type OverviewPage, type OverviewSection } from "@/components/projects/Overview";
-import { formatMinutes } from "@/lib/reading/format";
+import { ReadMinutes } from "@/components/reading/ReaderFeatures";
+import { ChapterProgress, ReadingMap, StartCard, TotalReadingTime, type OverviewPage, type OverviewSection } from "@/components/projects/Overview";
 import { toNavSections } from "@/lib/nav";
 import { OverviewEditor } from "@/components/projects/OverviewEditor";
 import type { NavSection } from "@/components/shell/types";
@@ -46,7 +46,7 @@ function PageRow({ page, badge }: { page: OverviewPage; badge?: string }) {
           {page.title}
           {badge && <span className="ov-badge">{badge}</span>}
         </span>
-        <span className="ov-page-minutes">{page.minutes} min</span>
+        <span className="ov-page-minutes"><ReadMinutes words={page.words} suffix=" min" /></span>
         {page.description && <span className="ov-page-desc">{page.description}</span>}
       </Link>
     </li>
@@ -95,7 +95,7 @@ export default async function ProjectPage({
     href,
     title: page.title,
     description: page.description,
-    minutes: overview.pageStats[page.id]?.minutes ?? 1,
+    words: overview.pageStats[page.id]?.words ?? 0,
   });
 
   // Folders are the project's chapters, depth-first and numbered like a book
@@ -148,7 +148,6 @@ export default async function ProjectPage({
   });
   const changed = new Map(changes.map((change) => [change.page.id, change.kind]));
 
-  const totalMinutes = readingOrder.reduce((sum, page) => sum + page.minutes, 0);
   const lastUpdated = allMeta.reduce((latest, meta) => (meta.updatedAt > latest ? meta.updatedAt : latest), project.updatedAt);
   const glossary = Object.entries(project.glossary ?? {}).sort(([a], [b]) => a.localeCompare(b));
   const missing = [
@@ -223,7 +222,7 @@ export default async function ProjectPage({
         {/* Stats: only the ones that say something about this project. */}
         <dl className="ov-stats">
           <div><dt>Pages</dt><dd>{readingOrder.length}</dd></div>
-          <div><dt>To read it all</dt><dd>{formatMinutes(totalMinutes)}</dd></div>
+          <div><dt>To read it all</dt><dd><TotalReadingTime words={readingOrder.map((page) => page.words)} /></dd></div>
           {tree.sections.length > 0 && <div><dt>Folders</dt><dd>{tree.sections.length}</dd></div>}
           <div><dt>Last updated</dt><dd>{ago(lastUpdated)}</dd></div>
           {(overview.contributors.people > 0 || overview.contributors.agentEdits > 0) && (

@@ -117,7 +117,13 @@ export function Highlights({ pageId, initial }: { pageId: string; initial: Saved
     paint();
     const observer = new ResizeObserver(() => paint());
     if (content.current) observer.observe(content.current);
-    return () => observer.disconnect();
+    // Bionic reading rewraps text nodes; re-anchor when that happens.
+    const onContent = () => paint();
+    window.addEventListener("reader:content", onContent);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("reader:content", onContent);
+    };
   }, [paint]);
 
   useEffect(() => () => {

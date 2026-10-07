@@ -1,168 +1,16 @@
 "use client";
 
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
-import {
-  adoptLocalPrefs,
-  applyPreset,
-  BUILT_IN_PRESETS,
-  deletePreset,
-  flushPrefs,
-  getPrefs,
-  getPresets,
-  getServerPrefs,
-  getServerPresets,
-  matchingPreset,
-  MAX_PRESETS,
-  savePreset,
-  setPrefs,
-  subscribePrefs,
-  type ReadingPrefs,
-} from "@/lib/reading/prefs";
+import { usePathname } from "next/navigation";
+import Link from "@/components/shell/NavigationLink";
+import { adoptLocalPrefs, applyPrefs, flushPrefs, getPrefs, setPrefs } from "@/lib/reading/prefs";
 import { getServerSkim, getSkim, setSkim, subscribeSkim } from "@/lib/reading/skim";
+import { FacePicker, Group, PresetPicker, SizePicker, SpacingPicker, ThemePicker, usePrefs, WidthPicker } from "./SettingsControls";
 
-type EnumKey = "theme" | "face" | "size" | "measure" | "leading";
-type Choice<K extends EnumKey> = { value: ReadingPrefs[K]; label: string; hint?: string };
+export { usePrefs };
 
-const THEMES: Choice<"theme">[] = [
-  { value: "graphite", label: "Graphite", hint: "Dark, neutral" },
-  { value: "dusk", label: "Dusk", hint: "Warm and dim, for reading at night" },
-  { value: "paper", label: "Paper", hint: "Light" },
-  { value: "auto", label: "Auto", hint: "Follow your system: Paper by day, Graphite by night" },
-];
-const FACES: Choice<"face">[] = [
-  { value: "sans", label: "Sans", hint: "Inter" },
-  { value: "serif", label: "Serif", hint: "Literata, designed for long reading" },
-  { value: "readable", label: "Readable", hint: "Atkinson Hyperlegible, designed for low vision" },
-];
-const SIZES: Choice<"size">[] = [
-  { value: "s", label: "Small" },
-  { value: "m", label: "Medium" },
-  { value: "l", label: "Large" },
-  { value: "xl", label: "Extra large" },
-];
-const MEASURES: Choice<"measure">[] = [
-  { value: "narrow", label: "Narrow" },
-  { value: "standard", label: "Standard" },
-  { value: "wide", label: "Wide" },
-];
-const LEADINGS: Choice<"leading">[] = [
-  { value: "compact", label: "Compact" },
-  { value: "normal", label: "Normal" },
-  { value: "airy", label: "Airy" },
-];
-
-function Segmented<K extends EnumKey>({
-  label,
-  name,
-  choices,
-  value,
-  render,
-}: {
-  label: string;
-  name: K;
-  choices: Choice<K>[];
-  value: ReadingPrefs[K];
-  render?: (choice: Choice<K>) => React.ReactNode;
-}) {
-  return (
-    <fieldset className="prefs-group">
-      <legend>{label}</legend>
-      <div className="prefs-segmented">
-        {choices.map((choice) => (
-          <button
-            key={String(choice.value)}
-            type="button"
-            aria-pressed={choice.value === value}
-            title={choice.hint}
-            aria-label={render ? choice.label : undefined}
-            onClick={() => setPrefs({ [name]: choice.value } as Partial<ReadingPrefs>)}
-          >
-            {render ? render(choice) : choice.label}
-          </button>
-        ))}
-      </div>
-    </fieldset>
-  );
-}
-
-function Toggle({ name, label, hint }: { name: "paragraphFocus" | "ruler" | "autoHideHeader"; label: string; hint: string }) {
-  const prefs = usePrefs();
-  const on = prefs[name];
-  return (
-    <button type="button" role="switch" aria-checked={on} className="prefs-toggle" onClick={() => setPrefs({ [name]: !on })}>
-      <span className="prefs-toggle-text">
-        <span>{label}</span>
-        <small>{hint}</small>
-      </span>
-      <span className="prefs-switch" aria-hidden />
-    </button>
-  );
-}
-
-export function usePrefs() {
-  return useSyncExternalStore(subscribePrefs, getPrefs, getServerPrefs);
-}
-
-function usePresets() {
-  return useSyncExternalStore(subscribePrefs, getPresets, getServerPresets);
-}
-
-function Presets() {
-  const prefs = usePrefs();
-  const custom = usePresets();
-  const [naming, setNaming] = useState(false);
-  const [name, setName] = useState("");
-  const all = [...BUILT_IN_PRESETS, ...custom];
-  const active = matchingPreset(prefs, all);
-
-  return (
-    <fieldset className="prefs-group">
-      <legend>Presets</legend>
-      <div className="prefs-presets">
-        {all.map((preset) => {
-          const own = !preset.id.startsWith("builtin-");
-          return (
-            <span key={preset.id} className="prefs-preset" data-active={active?.id === preset.id}>
-              <button type="button" aria-pressed={active?.id === preset.id} onClick={() => applyPreset(preset)}>
-                {preset.name}
-              </button>
-              {own && (
-                <button type="button" className="prefs-preset-remove" aria-label={`Delete preset ${preset.name}`} onClick={() => deletePreset(preset.id)}>
-                  ×
-                </button>
-              )}
-            </span>
-          );
-        })}
-      </div>
-      {naming ? (
-        <form
-          className="prefs-save"
-          onSubmit={(event) => {
-            event.preventDefault();
-            if (!name.trim()) return;
-            savePreset(name);
-            setName("");
-            setNaming(false);
-          }}
-        >
-          <input autoFocus value={name} maxLength={40} onChange={(event) => setName(event.target.value)} placeholder="Name this preset" aria-label="Preset name" />
-          <button type="submit" disabled={!name.trim()}>Save</button>
-          <button type="button" onClick={() => setNaming(false)}>Cancel</button>
-        </form>
-      ) : (
-        !active && custom.length < MAX_PRESETS && (
-          <button type="button" className="prefs-save-trigger" onClick={() => setNaming(true)}>
-            + Save current settings as a preset
-          </button>
-        )
-      )}
-    </fieldset>
-  );
-}
-
+/** The quick menu behind "Aa": the look, at a glance. Everything else lives on /settings. */
 export function ReadingPreferences() {
-  const prefs = usePrefs();
   const [open, setOpen] = useState(false);
   const root = useRef<HTMLDivElement>(null);
 
@@ -193,55 +41,31 @@ export function ReadingPreferences() {
         title="Reading preferences"
         onClick={() => setOpen((value) => !value)}
       >
-        <span aria-hidden className="prefs-glyph">
-          <span>A</span>
-          <span>a</span>
-        </span>
+        <span aria-hidden className="prefs-glyph"><span>A</span><span>a</span></span>
       </button>
       {open && (
         <div className="prefs-panel" role="group" aria-label="Reading preferences">
-          <Presets />
-          <Segmented label="Theme" name="theme" choices={THEMES} value={prefs.theme} />
-          <Segmented
-            label="Typeface"
-            name="face"
-            choices={FACES}
-            value={prefs.face}
-            render={(choice) => <span className={`prefs-face prefs-face-${choice.value}`}>{choice.label}</span>}
-          />
-          <Segmented
-            label="Text size"
-            name="size"
-            choices={SIZES}
-            value={prefs.size}
-            render={(choice) => <span className={`prefs-size prefs-size-${choice.value}`} aria-hidden>A</span>}
-          />
-          <Segmented label="Line width" name="measure" choices={MEASURES} value={prefs.measure} />
-          <Segmented label="Line spacing" name="leading" choices={LEADINGS} value={prefs.leading} />
-          <fieldset className="prefs-group">
-            <legend>Reading aids</legend>
-            <div className="prefs-toggles">
-              <Toggle name="paragraphFocus" label="Paragraph focus" hint="Fades everything except the paragraph under your mouse" />
-              <Toggle name="ruler" label="Reading ruler" hint="Point at the text: the line you're on stays clear, the rest dims" />
-              <Toggle name="autoHideHeader" label="Hide header while reading" hint="Slides away as you scroll down" />
-            </div>
-          </fieldset>
-          <dl className="prefs-keys">
-            <div><dt><kbd>[</kbd> <kbd>]</kbd></dt><dd>Previous / next page</dd></div>
-            <div><dt><kbd>F</kbd></dt><dd>Focus mode</dd></div>
-            <div><dt><kbd>S</kbd></dt><dd>Skim mode</dd></div>
-            <div><dt><kbd>Ctrl</kbd> <kbd>K</kbd></dt><dd>Search</dd></div>
-          </dl>
-          <p className="prefs-sync">Saved to your account — these follow you to any device.</p>
+          <Group label="Presets"><PresetPicker /></Group>
+          <Group label="Theme"><ThemePicker /></Group>
+          <Group label="Typeface"><FacePicker /></Group>
+          <Group label="Text size"><SizePicker /></Group>
+          <Group label="Page width"><WidthPicker /></Group>
+          <Group label="Line spacing"><SpacingPicker /></Group>
+          <Link href="/settings" className="prefs-more" onClick={() => setOpen(false)}>
+            <span>All reading settings</span>
+            <small>Focus aids, read aloud, reading speed, schedule, stats…</small>
+            <span aria-hidden>→</span>
+          </Link>
         </div>
       )}
     </div>
   );
 }
 
-/** Mounted once in the root layout: keeps preferences in sync with the account. */
+/** Mounted once in the root layout: keeps preferences applied and synced. */
 export function ReaderBoot() {
   const prefs = usePrefs();
+  const pathname = usePathname();
 
   useEffect(() => {
     adoptLocalPrefs();
@@ -249,13 +73,22 @@ export function ReaderBoot() {
     return () => window.removeEventListener("pagehide", flushPrefs);
   }, []);
 
-  // "Auto" has to follow the system while the page is open, not just on load.
+  // A project's own preset applies on its pages and stops when you leave.
   useEffect(() => {
-    if (prefs.theme !== "auto") return;
-    const media = window.matchMedia("(prefers-color-scheme: light)");
-    const sync = () => setPrefs({ theme: "auto" });
-    media.addEventListener("change", sync);
-    return () => media.removeEventListener("change", sync);
+    applyPrefs();
+  }, [pathname]);
+
+  // "Auto" follows the system; "Schedule" follows the clock.
+  useEffect(() => {
+    if (prefs.theme === "auto") {
+      const media = window.matchMedia("(prefers-color-scheme: light)");
+      media.addEventListener("change", applyPrefs);
+      return () => media.removeEventListener("change", applyPrefs);
+    }
+    if (prefs.theme === "schedule") {
+      const timer = window.setInterval(applyPrefs, 60_000);
+      return () => window.clearInterval(timer);
+    }
   }, [prefs.theme]);
 
   return null;
@@ -271,14 +104,10 @@ export function FocusToggle() {
       className="toolbar-button focus-toggle"
       aria-pressed={prefs.focus}
       title="Hide the side panels (F)"
-      onClick={() => setPrefs({ focus: !prefs.focus })}
+      onClick={() => setPrefs({ focus: !getPrefs().focus })}
     >
       <svg {...ICON}>
-        {prefs.focus ? (
-          <path d="M6 2.5v3.5H2.5M10 2.5v3.5h3.5M6 13.5V10H2.5M10 13.5V10h3.5" />
-        ) : (
-          <path d="M2.5 6V2.5H6M13.5 6V2.5H10M2.5 10v3.5H6M13.5 10v3.5H10" />
-        )}
+        {prefs.focus ? <path d="M6 2.5v3.5H2.5M10 2.5v3.5h3.5M6 13.5V10H2.5M10 13.5V10h3.5" /> : <path d="M2.5 6V2.5H6M13.5 6V2.5H10M2.5 10v3.5H6M13.5 10v3.5H10" />}
       </svg>
       {prefs.focus ? "Exit focus" : "Focus"}
     </button>
@@ -288,16 +117,8 @@ export function FocusToggle() {
 export function SkimToggle() {
   const skim = useSyncExternalStore(subscribeSkim, getSkim, getServerSkim);
   return (
-    <button
-      type="button"
-      className="toolbar-button"
-      aria-pressed={skim}
-      title="Show only headings and the opening of each section (S)"
-      onClick={() => setSkim(!skim)}
-    >
-      <svg {...ICON}>
-        <path d="M2.5 3.5h11M2.5 8h7M2.5 12.5h9" />
-      </svg>
+    <button type="button" className="toolbar-button" aria-pressed={skim} title="Show only headings and the opening of each section (S)" onClick={() => setSkim(!skim)}>
+      <svg {...ICON}><path d="M2.5 3.5h11M2.5 8h7M2.5 12.5h9" /></svg>
       {skim ? "Read all" : "Skim"}
     </button>
   );

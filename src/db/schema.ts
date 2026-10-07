@@ -5,6 +5,7 @@ import {
   type AnyPgColumn,
   boolean,
   customType,
+  date,
   index,
   integer,
   jsonb,
@@ -288,8 +289,23 @@ export const readerProfiles = pgTable("reader_profiles", {
   userId: uuid("user_id").primaryKey().references(() => users.id, { onDelete: "cascade" }),
   prefs: jsonb("prefs").$type<ReadingPrefs>().notNull(),
   presets: jsonb("presets").$type<ReadingPreset[]>().notNull().default(sql`'[]'::jsonb`),
+  /** project slug → preset id, applied automatically on that project's pages. */
+  projectPresets: jsonb("project_presets").$type<Record<string, string>>().notNull().default(sql`'{}'::jsonb`),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 });
+
+// One row per reader per local calendar day: active reading time and pages
+// finished. Feeds weekly stats and the optional streak.
+export const readingDays = pgTable(
+  "reading_days",
+  {
+    userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    day: date("day").notNull(),
+    seconds: integer("seconds").notNull().default(0),
+    pagesFinished: integer("pages_finished").notNull().default(0),
+  },
+  (t) => [primaryKey({ columns: [t.userId, t.day] })],
+);
 
 export const readingProgress = pgTable(
   "reading_progress",

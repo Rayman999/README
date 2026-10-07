@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
-import { getPrefs, setPrefs } from "@/lib/reading/prefs";
+import { effectivePrefs, getPrefs, reducedMotion, setPrefs, subscribePrefs } from "@/lib/reading/prefs";
 import { getSkim, setSkim } from "@/lib/reading/skim";
 import { getLive, getServerLive, setLive, subscribeLive } from "@/lib/reading/state";
 import { flushProgress, useReadingRecords } from "./ReadingRecords";
@@ -15,8 +15,17 @@ function isTyping(target: EventTarget | null) {
   return el.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName);
 }
 
-function prefersReducedMotion() {
-  return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+const localDay = () => new Date().toLocaleDateString("en-CA");
+
+/** Sends active reading time (and a finished page) for today's stats and streak. */
+function reportActivity(seconds: number, finished: number) {
+  if (seconds <= 0 && finished <= 0) return;
+  void fetch("/api/reader/activity", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ day: localDay(), seconds: Math.min(600, Math.round(seconds)), finished: Math.min(5, finished) }),
+    keepalive: true,
+  }).catch(() => { /* stats are best effort */ });
 }
 
 /** The heading a reader was last under, so "resume" can say where it goes. */
@@ -40,15 +49,18 @@ function headingAbove(y: number) {
  */
 export function ReaderRuntime({
   pageId,
-  minutes,
+  words,
   previousHref,
   nextHref,
 }: {
   pageId: string;
-  minutes: number;
+  words: number;
   previousHref?: string;
   nextHref?: string;
 }) {
+  // Minutes follow the reader's own reading speed from settings.
+  const wpm = useSyncExternalStore(subscribePrefs, () => getPrefs().wpm, () => 230);
+  const minutes = Math.max(1, Math.round(words / wpm));
   const router = useRouter();
   const { records, update } = useReadingRecords();
   const bar = useRef<HTMLDivElement>(null);
@@ -107,7 +119,7 @@ export function ReaderRuntime({
         }
       }
 
-      if (getPrefs().autoHideHeader) {
+      if (effectivePrefs().autoHideHeader) {
         const delta = window.scrollY - lastScrollY;
         if (window.scrollY < 120 || delta < -6) root.classList.remove("header-hidden");
         else if (delta > 6) root.classList.add("header-hidden");
@@ -180,6 +192,33 @@ export function ReaderRuntime({
     };
   }, [arrival]);
 
+  // Reading time for stats and streaks. Counts in 5 s ticks, only while the
+  // tab is visible and the reader has done something in the last minute (or
+  // read aloud / auto-scroll is doing it for them).
+  useEffect(() => {
+    let seconds = 0;
+    let finished = 0;
+    let lastInput = Date.now();
+    let counted = Boolean(arrival?.done);
+    const mark = () => { lastInput = Date.now(); };
+    const INPUT = ["pointermove", "wheel", "keydown", "touchmove", "scroll"] as const;
+    INPUT.forEach((type) => window.addEventListener(type, mark, { passive: true }));
+    const flush = () => { reportActivity(seconds, finished); seconds = 0; finished = 0; };
+    const tick = window.setInterval(() => {
+      const assisted = document.querySelector(".reader-dock") !== null;
+      if (document.visibilityState === "visible" && (assisted || Date.now() - lastInput < 60_000)) seconds += 5;
+      if (!counted && getLive().progress >= DONE_AT) { counted = true; finished += 1; }
+      if (seconds >= 60 || finished > 0) flush();
+    }, 5000);
+    window.addEventListener("pagehide", flush);
+    return () => {
+      window.clearInterval(tick);
+      INPUT.forEach((type) => window.removeEventListener(type, mark));
+      window.removeEventListener("pagehide", flush);
+      flush();
+    };
+  }, [pageId, arrival]);
+
   // Keyboard: paging, focus, skim.
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
@@ -224,13 +263,12 @@ export function ReaderRuntime({
   return (
     <>
       <div ref={bar} className="reading-progress-bar" aria-hidden />
-      <ReadingRuler />
       {resume && (
         <div className="resume-pill" role="status">
           <button
             type="button"
             onClick={() => {
-              window.scrollTo({ top: resume.y, behavior: prefersReducedMotion() ? "auto" : "smooth" });
+              window.scrollTo({ top: resume.y, behavior: reducedMotion() ? "auto" : "smooth" });
               setResume(null);
             }}
           >
@@ -244,52 +282,6 @@ export function ReaderRuntime({
       )}
     </>
   );
-}
-
-/**
- * A reading window: the line under the mouse stays clear while everything
- * above and below it dims, so the eye can't slip to the wrong line. Mouse
- * only; it fades out when the pointer leaves the article.
- */
-function ReadingRuler() {
-  const band = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    if (!window.matchMedia("(hover: hover)").matches) return;
-    const content = document.querySelector<HTMLElement>(".reading-content");
-    if (!content) return;
-    let last: { x: number; y: number } | null = null;
-
-    const place = () => {
-      const el = band.current;
-      if (!el) return;
-      const on = document.documentElement.hasAttribute("data-ruler");
-      const rect = content.getBoundingClientRect();
-      const inside = on && last !== null
-        && last.x >= rect.left - 48 && last.x <= rect.right + 48
-        && last.y >= rect.top && last.y <= rect.bottom;
-      el.dataset.visible = String(inside);
-      if (!inside || !last) return;
-      const body = content.querySelector(".doc-body, .readme-document") ?? content;
-      const lineHeight = parseFloat(getComputedStyle(body).lineHeight) || 28;
-      const height = lineHeight * 1.3;
-      el.style.left = `${rect.left - 14}px`;
-      el.style.width = `${rect.width + 28}px`;
-      el.style.height = `${height}px`;
-      el.style.transform = `translateY(${last.y - height / 2}px)`;
-    };
-    const onMove = (event: PointerEvent) => {
-      if (event.pointerType === "touch") return;
-      last = { x: event.clientX, y: event.clientY };
-      place();
-    };
-    window.addEventListener("pointermove", onMove, { passive: true });
-    window.addEventListener("scroll", place, { passive: true });
-    return () => {
-      window.removeEventListener("pointermove", onMove);
-      window.removeEventListener("scroll", place);
-    };
-  }, []);
-  return <div ref={band} className="reading-ruler" data-visible="false" aria-hidden />;
 }
 
 /** Quiet acknowledgement at the end of the article once it has been read. */

@@ -28,7 +28,7 @@ The product exists to be read. Every rule here serves one goal: a reader should 
 
 > A quiet, matte reading room. Neutral greys, one softly raised page, generous space, and nothing that competes with the words.
 
-Graphite (dark) is the default and the identity. Paper (light) is the same design printed on a light ground, for daytime reading and for readers who find light-on-dark text blurry. Both are strictly neutral — never blue-, green- or purple-tinted. Dusk, the night theme, is the one warm exception.
+Graphite (dark) is the default and the identity. Paper (light) is the same design printed on a light ground, for daytime reading and for readers who find light-on-dark text blurry. Both are strictly neutral — never blue-, green- or purple-tinted. Graphite stays the default; Dusk, Ink, Slate, Sepia and Mist are reader-chosen alternatives, each a complete token set.
 
 There is **no accent colour**. Emphasis is brightness, weight, size and space. If something needs to stand out, make it brighter or give it room; don't give it a hue.
 
@@ -84,10 +84,37 @@ Shadows: none on Graphite (nothing is darker than the shell to cast onto), a sof
 
 ## 4. Reading preferences
 
-Set from the **Aa** menu in the header. Saved to the reader's account (`reader_profiles`) so they follow them to any device, cached in the browser, and applied before first paint as attributes on `<html>`, so there is never a flash of the wrong theme. Personal only — there are no workspace-wide defaults.
+The **Aa** menu in the header holds the look (presets, theme, typeface, size, page width, spacing). Everything else lives on **/settings**, which has a live preview. All of it is saved to the reader's account (`reader_profiles`), cached in the browser, and applied before first paint as attributes on `<html>` — never a flash of the wrong theme. Personal only; there are no workspace-wide defaults.
 
 | Setting | Values | Effect |
 |---|---|---|
+| `data-theme` | `graphite` (default), `dusk`, `ink`, `slate`, `paper`, `sepia`, `mist`; or Auto (system) / Schedule (day and night themes at set times) | Swaps the token set |
+| `data-face` | `sans` (Inter), `serif` (Literata), `editorial` (Newsreader), `humanist` (Source Sans 3), `readable` (Atkinson Hyperlegible), `mono` (IBM Plex Mono) | Body face; `readable`, `editorial` and `mono` set headings too. Optional faces aren't preloaded |
+| `data-size` | `s` 15.5px, `m` 17px, `l` 18.5px, `xl` 20px | `--reading-size` |
+| `data-measure` | `narrow` 560px, `standard` 640px, `wide` 780px | Page width, fixed in pixels: text size never changes it |
+| `data-leading` | `tight` 1.4, `compact` 1.55, `normal` (per face), `relaxed` 1.84, `airy` 1.95, `spacious` 2.15 | `--reading-leading` |
+| `data-contrast` | `softest` … `crispest` | Body text mixed toward the theme's secondary or heading colour |
+| `data-align` / `data-paragraph` | ragged or justified (with hyphenation); spaced or book-indented paragraphs | Text style |
+| `data-codesize`, `.code-wrap` | 12 / default / 15px; wrap long lines | Code blocks |
+| `data-focusmode` | off, paragraph, sentence | Everything except the block / sentence under the mouse recedes (reading line on touch) |
+| `.bionic` | on/off | Bolds the start of each word (the only feature that rewraps article text; fully reverted when off) |
+| `.reading-focus` | on/off (`F`) | Hides both side rails |
+| `.reduce-motion` | on/off | Turns off all animation regardless of the system setting |
+| auto-hide header | on/off | Header slides away on scroll down, returns on scroll up |
+
+Personal settings that aren't attributes: reading speed (words per minute — every "min read" and "min left" uses it), read-aloud voice and speed, auto-scroll speed, glossary hover, showing the streak.
+
+**Presets** set the *look* in one click and never touch reading speed or voice. Built in: Night, Deep focus, Daylight, Book, Easy reading; readers can save 12 of their own. A preset can be assigned to a **project**, and then applies automatically on that project's pages (resolved before first paint).
+
+**On the page:** Listen (`L`, read aloud with sentence highlighting), Skim (`S`), Auto-scroll (`A`; Space pauses), Focus (`F`), Distraction-free (`Z`; full screen, text only). Read aloud and auto-scroll show a small dock at the bottom.
+
+**Glossary hover** underlines a project's glossary terms — the first mention per section only — and shows the definition on hover.
+
+**Reading stats** (`reading_days`): active reading time and pages finished per local day, a weekly view and an optional streak on /settings.
+
+**Skim** lasts for the browser session and is never saved, so a page never silently hides paragraphs on a later visit. Reaching the end while skimming doesn't mark a page read.
+
+---|---|---|
 | `data-theme` | `graphite` (default), `dusk`, `paper`; "Auto" resolves from the system | Swaps the token set |
 | `data-face` | `sans` (Inter, default), `serif` (Literata), `readable` (Atkinson Hyperlegible) | Body face; headings stay sans except in `readable`, where the whole article uses it |
 | `data-size` | `s` 15.5px, `m` 17px, `l` 18.5px, `xl` 20px | `--reading-size` |

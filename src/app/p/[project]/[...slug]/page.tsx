@@ -15,6 +15,7 @@ import { PageActions } from "@/components/documents/PageActions";
 import { PageHistory } from "@/components/documents/PageHistory";
 import { FocusToggle, SkimToggle } from "@/components/reading/ReadingPreferences";
 import { Highlights } from "@/components/reading/Highlights";
+import { AutoScrollButton, ListenButton, ReaderFeatures, ReadMinutes, ZenButton } from "@/components/reading/ReaderFeatures";
 import { CopyForAI } from "@/components/reading/CopyForAI";
 import { getProgressForProject, listHighlightsForPage } from "@/lib/reading/server";
 import { CompletionNote, ReaderRuntime } from "@/components/reading/ReaderRuntime";
@@ -25,8 +26,6 @@ import { AppShell } from "@/components/shell/AppShell";
 import type { NavSection, TocEntry } from "@/components/shell/types";
 
 export const dynamic = "force-dynamic";
-
-const WORDS_PER_MINUTE = 230;
 
 /** Every human-readable string in a structured document, for reading time. */
 function documentText(value: unknown): string {
@@ -41,10 +40,9 @@ function documentText(value: unknown): string {
   return "";
 }
 
-function readingMinutes(body: string, document: ReadmeDocument | null) {
+function wordCount(body: string, document: ReadmeDocument | null) {
   const text = document ? documentText(document.blocks) : body;
-  const words = text.split(/\s+/).filter(Boolean).length;
-  return Math.max(1, Math.round(words / WORDS_PER_MINUTE));
+  return text.split(/\s+/).filter(Boolean).length;
 }
 
 export default async function DocPage({
@@ -107,7 +105,7 @@ export default async function DocPage({
   const previous = index > 0 ? ordered[index - 1] : null;
   const next = index >= 0 && index < ordered.length - 1 ? ordered[index + 1] : null;
 
-  const minutes = readingMinutes(page.body, page.document);
+  const words = wordCount(page.body, page.document);
   const editor = canWrite(session.user.role);
 
   async function signOutAction() {
@@ -129,7 +127,7 @@ export default async function DocPage({
       <ReaderRuntime
         key={page.id}
         pageId={page.id}
-        minutes={minutes}
+        words={words}
         previousHref={previous?.href}
         nextHref={next?.href}
       />
@@ -157,7 +155,7 @@ export default async function DocPage({
 
           <div className="reader-meta">
             <div className="reader-facts">
-              <span>{minutes} min read</span>
+              <span><ReadMinutes words={words} /></span>
               {/* How current a page is is the first thing a reader needs to know about documentation. */}
               <time dateTime={page.updatedAt.toISOString()}>
                 Updated {page.updatedAt.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
@@ -169,11 +167,14 @@ export default async function DocPage({
             </div>
             <div className="reader-tools">
               <CopyForAI project={project.slug} page={page.slug} />
+              <ListenButton />
               <SkimToggle />
+              <AutoScrollButton />
               <FocusToggle />
+              <ZenButton />
               <PageHistory project={project.slug} page={page.slug} />
               {editor && (
-                <Link href={`/compose/${project.slug}?page=${page.slug}`} className="toolbar-button">
+                <Link href={`/compose/${project.slug}?page=${page.slug}`} className="toolbar-button" title="Edit this page">
                   <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
                     <path d="M10.5 2.5l3 3-8 8h-3v-3z" />
                   </svg>
@@ -205,6 +206,7 @@ export default async function DocPage({
         </div>
 
         <Highlights key={page.id} pageId={page.id} initial={highlights} />
+        <ReaderFeatures key={`features-${page.id}`} glossary={project.glossary ?? {}} />
 
         <footer className="reader-end">
           <CompletionNote pageId={page.id} />

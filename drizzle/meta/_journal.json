@@ -78,6 +78,13 @@
       "when": 1791403008243,
       "tag": "0010_nested_folders",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1791406712894,
+      "tag": "0011_reading_settings",
+      "breakpoints": true
     }
   ]
 }

@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Atkinson_Hyperlegible, Inter, JetBrains_Mono, Literata } from "next/font/google";
+import { Atkinson_Hyperlegible, IBM_Plex_Mono, Inter, JetBrains_Mono, Literata, Newsreader, Source_Sans_3 } from "next/font/google";
 import "./globals.css";
 import "@/components/documents/documents.css";
 import { auth } from "@/auth";
@@ -14,11 +14,14 @@ const inter = Inter({
   axes: ["opsz"],
 });
 
+// Optional reading faces: not preloaded, so a browser only downloads the one
+// a reader has actually chosen.
 const literata = Literata({
   variable: "--font-literata",
   subsets: ["latin"],
   style: ["normal", "italic"],
   axes: ["opsz"],
+  preload: false,
 });
 
 const atkinson = Atkinson_Hyperlegible({
@@ -26,6 +29,30 @@ const atkinson = Atkinson_Hyperlegible({
   subsets: ["latin"],
   weight: ["400", "700"],
   style: ["normal", "italic"],
+  preload: false,
+});
+
+const sourceSans = Source_Sans_3({
+  variable: "--font-source-sans",
+  subsets: ["latin"],
+  style: ["normal", "italic"],
+  preload: false,
+});
+
+const newsreader = Newsreader({
+  variable: "--font-newsreader",
+  subsets: ["latin"],
+  style: ["normal", "italic"],
+  axes: ["opsz"],
+  preload: false,
+});
+
+const plexMono = IBM_Plex_Mono({
+  variable: "--font-plex-mono",
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+  style: ["normal", "italic"],
+  preload: false,
 });
 
 const jetbrainsMono = JetBrains_Mono({
@@ -60,7 +87,7 @@ export default async function RootLayout({
     <html
       lang="en"
       data-theme="graphite"
-      className={`${inter.variable} ${literata.variable} ${atkinson.variable} ${jetbrainsMono.variable}`}
+      className={`${inter.variable} ${literata.variable} ${atkinson.variable} ${sourceSans.variable} ${newsreader.variable} ${plexMono.variable} ${jetbrainsMono.variable}`}
       suppressHydrationWarning
     >
       <head>

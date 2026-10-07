@@ -1,7 +1,7 @@
 import "server-only";
 import { and, desc, eq, isNull, sql } from "drizzle-orm";
 import { db } from "@/db";
-import { highlights, pages, projects, readerProfiles, readingProgress, sections } from "@/db/schema";
+import { highlights, pages, projects, readerProfiles, readingDays, readingProgress, sections } from "@/db/schema";
 import type { ReadingPreset, ReadingPrefs } from "./prefs";
 
 // Every query here is scoped by the signed-in user's id. Reading data is
@@ -9,25 +9,84 @@ import type { ReadingPreset, ReadingPrefs } from "./prefs";
 
 export async function getReaderProfile(userId: string) {
   const row = await db.query.readerProfiles.findFirst({ where: eq(readerProfiles.userId, userId) });
-  return row ? { prefs: row.prefs, presets: row.presets } : null;
+  return row ? { prefs: row.prefs, presets: row.presets, projectPresets: row.projectPresets ?? {} } : null;
 }
 
 export async function saveReaderProfile(
   userId: string,
-  patch: { prefs?: ReadingPrefs; presets?: ReadingPreset[] },
+  patch: { prefs?: ReadingPrefs; presets?: ReadingPreset[]; projectPresets?: Record<string, string> },
   fallbackPrefs: ReadingPrefs,
 ) {
   await db
     .insert(readerProfiles)
-    .values({ userId, prefs: patch.prefs ?? fallbackPrefs, presets: patch.presets ?? [] })
+    .values({ userId, prefs: patch.prefs ?? fallbackPrefs, presets: patch.presets ?? [], projectPresets: patch.projectPresets ?? {} })
     .onConflictDoUpdate({
       target: readerProfiles.userId,
       set: {
         ...(patch.prefs ? { prefs: patch.prefs } : {}),
         ...(patch.presets ? { presets: patch.presets } : {}),
+        ...(patch.projectPresets ? { projectPresets: patch.projectPresets } : {}),
         updatedAt: new Date(),
       },
     });
+}
+
+/** Adds active reading time (and a finished page) to the reader's local day. */
+export async function recordActivity(userId: string, day: string, seconds: number, finished: number) {
+  await db
+    .insert(readingDays)
+    .values({ userId, day, seconds, pagesFinished: finished })
+    .onConflictDoUpdate({
+      target: [readingDays.userId, readingDays.day],
+      set: {
+        // Cap a day at 24h however the client misbehaves.
+        seconds: sql`least(${readingDays.seconds} + excluded.seconds, 86400)`,
+        pagesFinished: sql`${readingDays.pagesFinished} + excluded.pages_finished`,
+      },
+    });
+}
+
+export type ReadingStats = {
+  week: { day: string; seconds: number; pages: number }[];
+  weekSeconds: number;
+  weekPages: number;
+  streak: number;
+};
+
+const iso = (date: Date) => date.toISOString().slice(0, 10);
+
+/**
+ * The last seven days ending on `today` (the reader's local date), and the
+ * streak: consecutive days with at least a minute of reading, ending today —
+ * or yesterday, so a streak isn't "lost" before you've read today.
+ */
+export async function getReadingStats(userId: string, today: string): Promise<ReadingStats> {
+  const rows = await db
+    .select({ day: readingDays.day, seconds: readingDays.seconds, pages: readingDays.pagesFinished })
+    .from(readingDays)
+    .where(and(eq(readingDays.userId, userId), sql`${readingDays.day} > (${today}::date - 400)`))
+    .orderBy(desc(readingDays.day));
+  const byDay = new Map(rows.map((row) => [String(row.day), row]));
+  const end = new Date(`${today}T00:00:00Z`);
+  const back = (n: number) => iso(new Date(end.getTime() - n * 86_400_000));
+
+  const week = Array.from({ length: 7 }, (_, i) => {
+    const day = back(6 - i);
+    const row = byDay.get(day);
+    return { day, seconds: row?.seconds ?? 0, pages: row?.pages ?? 0 };
+  });
+
+  const active = (day: string) => (byDay.get(day)?.seconds ?? 0) >= 60;
+  let start = active(back(0)) ? 0 : active(back(1)) ? 1 : -1;
+  let streak = 0;
+  if (start >= 0) while (active(back(start++))) streak += 1;
+
+  return {
+    week,
+    weekSeconds: week.reduce((sum, entry) => sum + entry.seconds, 0),
+    weekPages: week.reduce((sum, entry) => sum + entry.pages, 0),
+    streak,
+  };
 }
 
 export type ProgressRecord = { progress: number; y: number; done: boolean; at: number };
