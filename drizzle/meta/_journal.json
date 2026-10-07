@@ -71,6 +71,13 @@
       "when": 1791318179928,
       "tag": "0009_section_descriptions",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1791403008243,
+      "tag": "0010_nested_folders",
+      "breakpoints": true
     }
   ]
 }

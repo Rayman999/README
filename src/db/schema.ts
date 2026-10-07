@@ -181,9 +181,15 @@ export const sections = pgTable(
     // What belongs here, in one sentence. Lets people and agents decide where
     // a page goes without guessing from the title alone.
     description: text("description").notNull().default(""),
+    // Folders nest to any depth. Deleting a parent lifts its children to the
+    // top level rather than deleting them. Position orders siblings.
+    parentId: uuid("parent_id").references((): AnyPgColumn => sections.id, { onDelete: "set null" }),
     position: integer("position").notNull(),
   },
-  (t) => [uniqueIndex("sections_project_slug_idx").on(t.projectId, t.slug)],
+  (t) => [
+    uniqueIndex("sections_project_slug_idx").on(t.projectId, t.slug),
+    index("sections_parent_idx").on(t.parentId),
+  ],
 );
 
 export const pages = pgTable(

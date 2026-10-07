@@ -32,20 +32,20 @@ export async function buildPageExport(workspaceId: string, projectSlug: string, 
   // can ask for it by name.
   const map: string[] = [];
   let count = 0;
-  const line = (entry: { slug: string; title: string; description: string }) => {
+  const line = (indent: string) => (entry: { slug: string; title: string; description: string }) => {
     count += 1;
     if (count > MAP_LIMIT) return;
     const here = entry.slug === page.slug ? " ← this page" : "";
-    map.push(`  - ${entry.title} (\`${entry.slug}\`)${here}${entry.description && !here ? ` — ${entry.description}` : ""}`);
+    map.push(`${indent}- ${entry.title} (\`${entry.slug}\`)${here}${entry.description && !here ? ` — ${entry.description}` : ""}`);
   };
   for (const entry of tree.sections) {
-    if (!entry.pages.length) continue;
-    map.push(`- **${entry.title}**${entry.description ? ` — ${entry.description}` : ""}`);
-    entry.pages.forEach(line);
+    const indent = "  ".repeat(entry.depth);
+    map.push(`${indent}- **${entry.title}**${entry.description ? ` — ${entry.description}` : ""}`);
+    entry.pages.forEach(line(`${indent}  `));
   }
   if (tree.loosePages.length) {
     if (tree.sections.some((entry) => entry.pages.length)) map.push("- **Other pages**");
-    tree.loosePages.forEach(line);
+    tree.loosePages.forEach(line("  "));
   }
   if (count > MAP_LIMIT) map.push(`  - …and ${count - MAP_LIMIT} more pages`);
 
@@ -62,7 +62,7 @@ export async function buildPageExport(workspaceId: string, projectSlug: string, 
     "| | |",
     "| --- | --- |",
     `| Project | ${project.name} (\`${project.slug}\`) — ${project.summary.replace(/\n/g, " ")} |`,
-    ...(section ? [`| Section | ${section.title}${section.description ? ` — ${section.description}` : ""} |`] : []),
+    ...(section ? [`| Folder | ${section.path.join(" / ")}${section.description ? ` — ${section.description}` : ""} |`] : []),
     `| Page | \`${page.slug}\` · version ${page.version} · updated ${updated} |`,
     `| Status | ${STATUS[page.status] ?? page.status} |`,
     `| Written by | ${page.authorType === "agent" ? "An AI agent (reviewed status above)" : "A person"} |`,

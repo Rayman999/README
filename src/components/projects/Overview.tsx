@@ -6,7 +6,7 @@ import { useNextRead, type ReadablePage } from "@/components/reading/ReadMarks";
 import { formatMinutes } from "@/lib/reading/format";
 
 export type OverviewPage = ReadablePage & { slug: string; minutes: number };
-export type OverviewSection = { id: string; slug: string; title: string; description: string; pages: OverviewPage[] };
+export type OverviewSection = { id: string; parentId: string | null; depth: number; number: string; slug: string; title: string; description: string; pages: OverviewPage[] };
 
 
 function useReadMinutes(pages: OverviewPage[]) {
@@ -64,10 +64,16 @@ export function StartCard({ pages }: { pages: OverviewPage[] }) {
 /** The whole project at a glance: one bar, a segment per section sized by reading time. */
 export function ReadingMap({ sections }: { sections: OverviewSection[] }) {
   const { records } = useReadingRecords();
-  const withPages = sections.filter((section) => section.pages.length > 0);
+  // One segment per top-level folder, covering everything inside it.
+  const groups: { id: string; slug: string; title: string; pages: OverviewPage[] }[] = [];
+  for (const section of sections) {
+    if (section.depth === 0) groups.push({ id: section.id, slug: section.slug, title: section.title, pages: [...section.pages] });
+    else groups.at(-1)?.pages.push(...section.pages);
+  }
+  const withPages = groups.filter((group) => group.pages.length > 0);
   if (withPages.length < 2) return null;
   return (
-    <nav className="ov-map" aria-label="Sections at a glance">
+    <nav className="ov-map" aria-label="Folders at a glance">
       {withPages.map((section, index) => {
         const minutes = section.pages.reduce((sum, page) => sum + page.minutes, 0);
         const read = section.pages.reduce((sum, page) => {

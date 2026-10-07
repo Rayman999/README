@@ -13,6 +13,7 @@ import { LearningPaths } from "@/components/documents/LearningPaths";
 import { ReadMark } from "@/components/reading/ReadMarks";
 import { ChapterProgress, ReadingMap, StartCard, type OverviewPage, type OverviewSection } from "@/components/projects/Overview";
 import { formatMinutes } from "@/lib/reading/format";
+import { toNavSections } from "@/lib/nav";
 import { OverviewEditor } from "@/components/projects/OverviewEditor";
 import type { NavSection } from "@/components/shell/types";
 
@@ -97,28 +98,40 @@ export default async function ProjectPage({
     minutes: overview.pageStats[page.id]?.minutes ?? 1,
   });
 
-  // Sections are the project's chapters, in order; loose pages close the book.
+  // Folders are the project's chapters, depth-first and numbered like a book
+  // (1, 1.1, 1.2, 2…); loose pages close it.
+  const counters: number[] = [];
   const chapters: OverviewSection[] = [
-    ...tree.sections.map((section) => ({
-      id: section.id,
-      slug: section.slug,
-      title: section.title,
-      description: section.description,
-      pages: section.pages.map((page) => toPage(page, `${projectHref}/${section.slug}/${page.slug}`)),
-    })),
+    ...tree.sections.map((section) => {
+      counters.length = section.depth + 1;
+      counters[section.depth] = (counters[section.depth] ?? 0) + 1;
+      return {
+        id: section.id,
+        parentId: section.parentId,
+        depth: section.depth,
+        number: counters.join("."),
+        slug: section.slug,
+        title: section.title,
+        description: section.description,
+        pages: section.pages.map((page) => toPage(page, `${projectHref}/${section.slug}/${page.slug}`)),
+      };
+    }),
     ...(tree.loosePages.length
-      ? [{ id: "loose", slug: "more", title: tree.sections.length ? "More pages" : "Pages", description: "", pages: tree.loosePages.map((page) => toPage(page, `${projectHref}/${page.slug}`)) }]
+      ? [{ id: "loose", parentId: null, depth: 0, number: "", slug: "more", title: tree.sections.length ? "More pages" : "Pages", description: "", pages: tree.loosePages.map((page) => toPage(page, `${projectHref}/${page.slug}`)) }]
       : []),
   ];
+  // A folder is worth showing if it, or anything beneath it, holds pages.
+  const hasPages = new Set<string>();
+  for (const chapter of [...chapters].reverse()) {
+    if (chapter.pages.length || hasPages.has(chapter.id)) {
+      hasPages.add(chapter.id);
+      if (chapter.parentId) hasPages.add(chapter.parentId);
+    }
+  }
   const readingOrder = chapters.flatMap((chapter) => chapter.pages);
   const allMeta = [...tree.sections.flatMap((s) => s.pages), ...tree.loosePages];
 
-  const navSections: NavSection[] = chapters.map((chapter) => ({
-    slug: chapter.slug,
-    title: chapter.title,
-    description: chapter.description,
-    pages: chapter.pages.map((page) => ({ id: page.id, slug: page.href, title: page.title, href: page.href })),
-  }));
+  const navSections: NavSection[] = toNavSections(tree, projectHref);
 
   // "New since your last visit": pages changed after this reader last read
   // them, and pages added since their most recent visit to the project.
@@ -211,7 +224,7 @@ export default async function ProjectPage({
         <dl className="ov-stats">
           <div><dt>Pages</dt><dd>{readingOrder.length}</dd></div>
           <div><dt>To read it all</dt><dd>{formatMinutes(totalMinutes)}</dd></div>
-          {tree.sections.length > 0 && <div><dt>Sections</dt><dd>{tree.sections.length}</dd></div>}
+          {tree.sections.length > 0 && <div><dt>Folders</dt><dd>{tree.sections.length}</dd></div>}
           <div><dt>Last updated</dt><dd>{ago(lastUpdated)}</dd></div>
           {(overview.contributors.people > 0 || overview.contributors.agentEdits > 0) && (
             <div>
@@ -264,17 +277,19 @@ export default async function ProjectPage({
               </ul>
             ) : (
               <ol className="ov-chapters">
-                {chapters.filter((chapter) => chapter.pages.length > 0).map((chapter, index) => (
-                  <li key={chapter.id} id={`chapter-${chapter.slug}`} className="ov-chapter">
+                {chapters.filter((chapter) => hasPages.has(chapter.id)).map((chapter) => (
+                  <li key={chapter.id} id={`chapter-${chapter.slug}`} className="ov-chapter" data-depth={Math.min(chapter.depth, 6)} style={{ "--depth": chapter.depth } as React.CSSProperties}>
                     <header>
-                      <span className="ov-chapter-index" aria-hidden>{String(index + 1).padStart(2, "0")}</span>
+                      <span className="ov-chapter-index" aria-hidden>{chapter.number || "·"}</span>
                       <h3>{chapter.title}</h3>
                       <ChapterProgress pages={chapter.pages} />
                       {chapter.description && <p className="ov-chapter-purpose">{chapter.description}</p>}
                     </header>
-                    <ul>
-                      {chapter.pages.map((page) => <PageRow key={page.id} page={page} badge={changed.get(page.id)} />)}
-                    </ul>
+                    {chapter.pages.length > 0 && (
+                      <ul>
+                        {chapter.pages.map((page) => <PageRow key={page.id} page={page} badge={changed.get(page.id)} />)}
+                      </ul>
+                    )}
                   </li>
                 ))}
               </ol>
@@ -282,7 +297,7 @@ export default async function ProjectPage({
 
             {editor && (
               <div className="ov-organise">
-                <SectionManager project={project.slug} sections={tree.sections.map((entry) => ({ id: entry.id, slug: entry.slug, title: entry.title, description: entry.description, position: entry.position, pageCount: entry.pages.length }))} />
+                <SectionManager project={project.slug} sections={tree.sections.map((entry) => ({ id: entry.id, slug: entry.slug, title: entry.title, description: entry.description, parentId: entry.parentId, depth: entry.depth, position: entry.position, pageCount: entry.pages.length }))} />
               </div>
             )}
 

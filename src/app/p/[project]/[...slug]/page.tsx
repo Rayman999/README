@@ -19,6 +19,7 @@ import { CopyForAI } from "@/components/reading/CopyForAI";
 import { getProgressForProject, listHighlightsForPage } from "@/lib/reading/server";
 import { CompletionNote, ReaderRuntime } from "@/components/reading/ReaderRuntime";
 import { InlineOutline } from "@/components/shell/Toc";
+import { readingOrder, toNavSections } from "@/lib/nav";
 import { canWrite } from "@/lib/api/context";
 import { AppShell } from "@/components/shell/AppShell";
 import type { NavSection, TocEntry } from "@/components/shell/types";
@@ -94,30 +95,14 @@ export default async function DocPage({
     listHighlightsForPage(userId, page.id),
   ]);
 
-  const navSections: NavSection[] = tree.sections.map((s) => ({
-    slug: s.slug,
-    title: s.title,
-    description: s.description,
-    pages: s.pages.map((p) => ({
-      id: p.id,
-      slug: p.slug,
-      title: p.title,
-      href: `${projectHref}/${s.slug}/${p.slug}`,
-    })),
-  }));
-  if (tree.loosePages.length > 0) navSections.push({
-    slug: "unsectioned", title: "Pages",
-    pages: tree.loosePages.map((p) => ({ id: p.id, slug: p.slug, title: p.title, href: `${projectHref}/${p.slug}` })),
-  });
+  const navSections: NavSection[] = toNavSections(tree, projectHref);
 
   const toc: TocEntry[] = headings.map((h) => ({ id: h.id, text: h.text, level: h.level }));
 
-  // Reading order is the sidebar order, so "next" is always what a reader
-  // working through the project would expect.
-  const ordered = [
-    ...tree.sections.flatMap((s) => s.pages.map((p) => ({ ...p, href: `${projectHref}/${s.slug}/${p.slug}`, sectionTitle: s.title }))),
-    ...tree.loosePages.map((p) => ({ ...p, href: `${projectHref}/${p.slug}`, sectionTitle: null as string | null })),
-  ];
+  // Reading order is the sidebar's route (folders depth-first), so "next" is
+  // always the next stop a reader working through the project would expect.
+  const ordered = readingOrder(tree, projectHref).map((entry) => ({ ...entry, sectionTitle: entry.folderPath.at(-1) ?? null }));
+  const folderPath = tree.sections.find((entry) => entry.id === page.sectionId)?.path ?? [];
   const index = ordered.findIndex((p) => p.id === page.id);
   const previous = index > 0 ? ordered[index - 1] : null;
   const next = index >= 0 && index < ordered.length - 1 ? ordered[index + 1] : null;
@@ -150,15 +135,22 @@ export default async function DocPage({
       />
       <article className="doc-panel reader-panel">
         <header>
-          <nav aria-label="Breadcrumb" className="reader-crumbs">
-            <Link href={projectHref}>{project.name}</Link>
-            {section && (
-              <>
-                <span aria-hidden>/</span>
-                <span>{section.title}</span>
-              </>
+          <div className="reader-crumbs-row">
+            <nav aria-label="Breadcrumb" className="reader-crumbs">
+              <Link href={projectHref}>{project.name}</Link>
+              {folderPath.map((name, i) => (
+                <span key={i} className="reader-crumb-folder">
+                  <span aria-hidden>/</span>
+                  <span>{name}</span>
+                </span>
+              ))}
+            </nav>
+            {ordered.length > 1 && index >= 0 && (
+              <span className="reader-stop" title="Where this page sits in the project's reading route">
+                Stop {index + 1} of {ordered.length}
+              </span>
             )}
-          </nav>
+          </div>
 
           <h1 className="reader-title">{page.title}</h1>
           {page.description && <p className="reader-dek">{page.description}</p>}

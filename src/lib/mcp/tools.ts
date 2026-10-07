@@ -3,7 +3,8 @@ import { and, asc, eq, isNull, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db";
 import { pages, projects, sections } from "@/db/schema";
-import { createPage, createSection, getPageBySlug, getProjectBySlug, movePageToSection, updatePage, updateSection } from "@/lib/projects";
+import { createPage, createSection, getPageBySlug, getProjectBySlug, movePageToSection, moveSection, updatePage, updateSection } from "@/lib/projects";
+import { orderFolders } from "@/lib/folders";
 import { documentContext, documentSchema, MAX_DOCUMENT_BYTES, starterDocument } from "@/lib/documents/schema";
 import { type AgentContext, consumeRate } from "./oauth";
 import { issuer } from "./security";
@@ -22,8 +23,8 @@ export const toolSchemas = {
   get_document_schema: z.object({}).strict(),
   create_document: z.object({ project: slug, slug, title, description, section: slug.optional(), tags, document: documentSchema }).strict(),
   update_document: z.object({ project: slug, page: slug, expectedVersion: z.number().int().min(1), title, description, tags, document: documentSchema }).strict(),
-  create_section: z.object({ project: slug, slug, title: z.string().trim().min(1).max(120), purpose: z.string().trim().min(1).max(300) }).strict(),
-  update_section: z.object({ project: slug, section: slug, title: z.string().trim().min(1).max(120).optional(), purpose: z.string().trim().min(1).max(300).optional() }).strict(),
+  create_section: z.object({ project: slug, slug, title: z.string().trim().min(1).max(120), purpose: z.string().trim().min(1).max(300), parent: slug.optional() }).strict(),
+  update_section: z.object({ project: slug, section: slug, title: z.string().trim().min(1).max(120).optional(), purpose: z.string().trim().min(1).max(300).optional(), parent: slug.nullable().optional() }).strict(),
   move_document: z.object({ project: slug, page: slug, section: slug.nullable() }).strict(),
 };
 type ToolName = keyof typeof toolSchemas;
@@ -39,9 +40,9 @@ const descriptions: Record<ToolName, string> = {
   get_document_schema: "Use this before writing documentation to get the strict themed JSON schema and example. HTML, custom CSS, scripts and arbitrary block types are not supported. Never invent chart measurements. Never draw ASCII or Unicode art: use the diagram block for flows and the chart block for figures.",
   create_document: "Use this when the user requests a new document. First read get_project_context and pick the section whose purpose fits; if none fits, create one with create_section rather than leaving the page loose. Prefer a diagram block over describing a flow in prose or characters. Saves a structured draft, never publishes. Slug must be new; if a retry reports a duplicate, read that slug to check whether the original save succeeded. Returns a URL.",
   update_document: "Use this to edit an existing structured draft after reading its full contents. Requires expectedVersion; stale writes fail. Cannot change stable/deprecated or legacy Markdown pages. Preserves a revision and returns a URL.",
-  create_section: "Use this when a project has no section that fits a page you are writing. A section groups pages by what readers come for (for example architecture, how-to guides, reference, decisions, implementation log). Give it a one-sentence purpose saying what belongs there. Check existing sections first; never create near-duplicates.",
-  update_section: "Use this to rename a section or clarify its one-sentence purpose so people and agents know what belongs in it. The slug never changes.",
-  move_document: "Use this to file a page into the section whose purpose fits it, or pass section null for the top level. Changes only where the page is listed; its content, status and links are unaffected. Use it when the user asks to organise a project, not to reshuffle pages unprompted.",
+  create_section: "Use this when a project has no folder (section) that fits a page you are writing. Folders group pages by what readers come for (for example architecture, how-to guides, reference, decisions, implementation log) and can nest: pass parent to create a sub-folder, e.g. an 'API' folder inside 'Architecture'. Give it a one-sentence purpose saying what belongs there. Check existing folders first; never create near-duplicates, and prefer a shallow tree readers can scan.",
+  update_section: "Use this to rename a folder, clarify its one-sentence purpose, or move it under another folder (parent slug) or to the top level (parent null). A folder can't move inside itself. The slug never changes.",
+  move_document: "Use this to file a page into the folder (section, at any depth) whose purpose fits it, or pass section null for the top level. Changes only where the page is listed; its content, status and links are unaffected. Use it when the user asks to organise a project, not to reshuffle pages unprompted.",
 };
 
 async function requireProject(ctx: AgentContext, name: string) {
@@ -70,8 +71,9 @@ async function execute(ctx: AgentContext, name: ToolName, raw: unknown): Promise
       const args = toolSchemas.get_project_context.parse(raw);
       const project = await requireProject(ctx, args.project);
       const rows = await db.select({ slug: pages.slug, title: pages.title, description: pages.description, status: pages.status, version: pages.version, sectionId: pages.sectionId, summary: sql<string | null>`${pages.document}->>'summary'` }).from(pages).where(and(eq(pages.projectId, project.id), isNull(pages.deletedAt))).orderBy(asc(pages.position), asc(pages.slug)).limit(51).offset(args.offset);
-      const sectionRows = await db.select({ id: sections.id, slug: sections.slug, title: sections.title, purpose: sections.description })
-        .from(sections).where(eq(sections.projectId, project.id)).orderBy(asc(sections.position)).limit(100);
+      // Folders in reading order (depth-first), each with its parent and path.
+      const sectionRows = orderFolders(await db.select({ id: sections.id, slug: sections.slug, title: sections.title, purpose: sections.description, parentId: sections.parentId, position: sections.position })
+        .from(sections).where(eq(sections.projectId, project.id)).orderBy(asc(sections.position)).limit(200));
       const sectionSlug = new Map(sectionRows.map((row) => [row.id, row.slug]));
       const counts = await db.select({ sectionId: pages.sectionId, value: sql<number>`count(*)::int` })
         .from(pages).where(and(eq(pages.projectId, project.id), isNull(pages.deletedAt))).groupBy(pages.sectionId);
@@ -79,11 +81,11 @@ async function execute(ctx: AgentContext, name: ToolName, raw: unknown): Promise
       return {
         project: { slug: project.slug, name: project.name, summary: project.summary, stack: project.stack, repositoryUrl: project.repositoryUrl, entrypoints: project.entrypoints, conventions: project.conventions, glossary: project.glossary, openQuestions: project.openQuestions },
         layout: {
-          sections: sectionRows.map((row) => ({ slug: row.slug, title: row.title, purpose: row.purpose, pages: pagesIn.get(row.id) ?? 0 })),
+          sections: sectionRows.map((row) => ({ slug: row.slug, title: row.title, purpose: row.purpose, parent: row.ancestors.at(-1) ?? null, path: row.path.join(" / "), depth: row.depth, pages: pagesIn.get(row.id) ?? 0 })),
           unsectionedPages: pagesIn.get(null) ?? 0,
           guidance: sectionRows.length === 0
             ? "This project has no sections yet; every page is listed at the top level. Once it has more than a handful of pages, propose sections grouped by what readers come for."
-            : "Each page belongs in the section whose purpose fits it. Pages with section null are listed at the top level.",
+            : "Folders are listed in reading order with their parent and path. Each page belongs in the folder whose purpose fits it most specifically. Pages with section null are listed at the top level.",
         },
         pages: rows.slice(0, 50).map(({ sectionId, ...row }) => ({ ...row, section: sectionId ? sectionSlug.get(sectionId) ?? null : null })),
         nextOffset: rows.length > 50 ? args.offset + 50 : null,
@@ -128,16 +130,27 @@ async function execute(ctx: AgentContext, name: ToolName, raw: unknown): Promise
       const args = toolSchemas.create_section.parse(raw);
       const project = await requireProject(ctx, args.project);
       if (await db.query.sections.findFirst({ where: and(eq(sections.projectId, project.id), eq(sections.slug, args.slug)) })) throw new ToolError("A section with this slug already exists. Use it, or update_section to clarify its purpose.");
-      const section = await createSection({ projectId: project.id, slug: args.slug, title: args.title, description: args.purpose });
-      return { saved: true, section: { slug: section.slug, title: section.title, purpose: section.description } };
+      const parent = args.parent ? await db.query.sections.findFirst({ where: and(eq(sections.projectId, project.id), eq(sections.slug, args.parent)) }) : null;
+      if (args.parent && !parent) throw new ToolError("Parent folder not found in this project.");
+      const section = await createSection({ projectId: project.id, slug: args.slug, title: args.title, description: args.purpose, parentId: parent?.id ?? null });
+      return { saved: true, section: { slug: section.slug, title: section.title, purpose: section.description, parent: parent?.slug ?? null } };
     }
     case "update_section": {
       const args = toolSchemas.update_section.parse(raw);
       const project = await requireProject(ctx, args.project);
       const section = await db.query.sections.findFirst({ where: and(eq(sections.projectId, project.id), eq(sections.slug, args.section)) });
       if (!section) throw new ToolError("Section not found in this project.");
-      if (!args.title && !args.purpose) throw new ToolError("Send a new title, a new purpose, or both.");
-      const row = await updateSection(section.id, { ...(args.title ? { title: args.title } : {}), ...(args.purpose ? { description: args.purpose } : {}) });
+      if (!args.title && !args.purpose && args.parent === undefined) throw new ToolError("Send a new title, purpose, parent, or a combination.");
+      if (args.parent !== undefined) {
+        const parent = args.parent ? await db.query.sections.findFirst({ where: and(eq(sections.projectId, project.id), eq(sections.slug, args.parent)) }) : null;
+        if (args.parent && !parent) throw new ToolError("Parent folder not found in this project.");
+        const moved = await moveSection(project.id, section.id, parent?.id ?? null);
+        if ("error" in moved) throw new ToolError(moved.error);
+      }
+      const row = args.title || args.purpose
+        ? await updateSection(section.id, { ...(args.title ? { title: args.title } : {}), ...(args.purpose ? { description: args.purpose } : {}) })
+        : await db.query.sections.findFirst({ where: eq(sections.id, section.id) });
+      if (!row) throw new ToolError("Section not found in this project.");
       return { saved: true, section: { slug: row.slug, title: row.title, purpose: row.description } };
     }
     case "move_document": {

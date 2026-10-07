@@ -4,6 +4,7 @@ import { badRequest, conflict, notFound, unauthorized } from "@/lib/api/problem"
 import {
   createSection,
   getProjectBySlug,
+  getSectionById,
   getSectionBySlug,
   listSections,
 } from "@/lib/projects";
@@ -14,6 +15,7 @@ const createSchema = z.object({
   title: z.string().trim().min(1).max(120),
   slug: z.string().trim().min(1).max(96).optional(),
   description: z.string().trim().max(300).optional(),
+  parentId: z.uuid().nullable().optional(),
 });
 
 export async function GET(req: Request) {
@@ -62,6 +64,10 @@ export async function POST(req: Request) {
     return conflict(`A section with the slug "${slug}" already exists in this project.`);
   }
 
-  const section = await createSection({ projectId: project.id, slug, title: data.title, description: data.description });
+  if (data.parentId) {
+    const parent = await getSectionById(data.parentId);
+    if (!parent || parent.projectId !== project.id) return badRequest("The parent folder is not in this project.");
+  }
+  const section = await createSection({ projectId: project.id, slug, title: data.title, description: data.description, parentId: data.parentId ?? null });
   return Response.json({ section }, { status: 201 });
 }

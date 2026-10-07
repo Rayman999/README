@@ -1,5 +1,6 @@
 import { and, asc, eq, isNull, sql } from "drizzle-orm";
 import { db } from "@/db";
+import { isWithin, orderFolders } from "@/lib/folders";
 import { learningPaths, pageRevisions, pages, projects, sections } from "@/db/schema";
 import { documentSchema, documentText, type ReadmeDocument } from "./documents/schema";
 
@@ -56,7 +57,11 @@ export async function updateProjectDetails(workspaceId: string, slug: string, de
   return row ?? null;
 }
 
-/** Sections with their pages, ordered — the shape the sidebar needs. */
+/**
+ * Folders with their pages, flattened in reading order (depth-first) with
+ * each folder's depth and path — the shape the sidebar, overview and
+ * "up next" all walk.
+ */
 export async function getProjectTree(projectId: string) {
   const [sectionRows, pageRows] = await Promise.all([
     db
@@ -68,7 +73,7 @@ export async function getProjectTree(projectId: string) {
   ]);
 
   return {
-    sections: sectionRows.map((section) => ({
+    sections: orderFolders(sectionRows).map((section) => ({
       ...section,
       pages: pageRows.filter((p) => p.sectionId === section.id),
     })),
@@ -119,11 +124,13 @@ export async function createSection(input: {
   slug: string;
   title: string;
   description?: string;
+  parentId?: string | null;
 }) {
+  const parentId = input.parentId ?? null;
   const [{ value: count }] = await db
     .select({ value: sql<number>`count(*)::int` })
     .from(sections)
-    .where(eq(sections.projectId, input.projectId));
+    .where(and(eq(sections.projectId, input.projectId), parentId ? eq(sections.parentId, parentId) : isNull(sections.parentId)));
 
   const [row] = await db
     .insert(sections)
@@ -132,6 +139,7 @@ export async function createSection(input: {
       slug: input.slug,
       title: input.title,
       description: input.description ?? "",
+      parentId,
       position: count,
     })
     .returning();
@@ -148,6 +156,24 @@ export async function updateSection(
     .where(eq(sections.id, id))
     .returning();
   return row;
+}
+
+/**
+ * Moves a folder under another folder (or to the top level), last among its
+ * new siblings. Refuses to put a folder inside itself or its own sub-folders.
+ * Returns an error message, or the updated row.
+ */
+export async function moveSection(projectId: string, sectionId: string, parentId: string | null) {
+  const rows = await db
+    .select({ id: sections.id, parentId: sections.parentId, position: sections.position, title: sections.title, slug: sections.slug })
+    .from(sections)
+    .where(eq(sections.projectId, projectId));
+  if (!rows.some((row) => row.id === sectionId)) return { error: "That folder is not in this project." } as const;
+  if (parentId && !rows.some((row) => row.id === parentId)) return { error: "The destination folder is not in this project." } as const;
+  if (parentId && isWithin(rows, parentId, sectionId)) return { error: "A folder can't be moved inside itself or one of its own sub-folders." } as const;
+  const position = rows.filter((row) => row.parentId === parentId && row.id !== sectionId).length;
+  const [row] = await db.update(sections).set({ parentId, position }).where(eq(sections.id, sectionId)).returning();
+  return { section: row } as const;
 }
 
 /**

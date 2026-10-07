@@ -733,6 +733,56 @@ nav[aria-label=Documentation] li a .truncate { white-space: normal; }
 .nav-filter input::placeholder { color: var(--text-muted); }
 .nav-filter input:focus { outline: 0; border-color: var(--border-visible); }
 
+/* Folder tree with a numbered reading route. */
+.nav-tree, .nav-folder-body { list-style: none; }
+.nav-tree > .nav-folder + .nav-folder[data-top="true"] { margin-top: 14px; }
+.nav-folder-row {
+  display: flex; width: 100%; min-height: 30px; align-items: center; gap: 6px;
+  padding: 4px 8px; border-radius: var(--radius-control);
+  color: var(--text-secondary); font-size: 13px; text-align: left;
+  transition: background-color var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease);
+}
+.nav-folder-row:hover { background: var(--state-hover); color: var(--text-primary); }
+.nav-folder[data-top="true"] > .nav-folder-row { color: var(--text-muted); font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; }
+.nav-folder[data-top="true"] > .nav-folder-row:hover { color: var(--text-tertiary); }
+.nav-folder-chevron { display: inline-flex; color: var(--text-muted); transition: rotate var(--dur-base) var(--ease); }
+.nav-folder-chevron[data-open="true"] { rotate: 90deg; }
+.nav-folder-icon { display: inline-flex; color: var(--text-muted); }
+.nav-folder-title { min-width: 0; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.nav-folder-count { flex-shrink: 0; color: var(--text-muted); font-size: 11px; font-weight: 500; letter-spacing: 0; text-transform: none; font-variant-numeric: tabular-nums; }
+/* Nested levels hang off a hairline so depth reads at a glance. */
+.nav-folder .nav-folder-body { margin-top: 2px; }
+.nav-folder-body .nav-folder-body { margin-left: 13px; padding-left: 6px; border-left: 1px solid var(--border-faint); }
+.nav-page {
+  position: relative; display: flex; min-height: 31px; align-items: center; gap: 9px;
+  padding: 5px 8px; border-radius: var(--radius-control);
+  color: var(--text-secondary); font-size: 13.5px; line-height: 1.4;
+  transition: background-color var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease);
+}
+.nav-page:hover { background: var(--state-hover); color: var(--text-primary); }
+.nav-page[data-active="true"] { background: var(--state-selected); color: var(--text-primary); }
+.nav-page-title { min-width: 0; }
+.journey-mark { display: inline-flex; width: 18px; flex-shrink: 0; align-items: center; justify-content: center; }
+.journey-step { color: var(--text-muted); font-family: var(--font-mono); font-size: 10.5px; font-variant-numeric: tabular-nums; }
+.journey-step[data-active="true"] { color: var(--text-heading); font-weight: 600; }
+.journey-done { color: var(--text-secondary); }
+.journey-mark.read-mark-partial { width: 10px; margin-inline: 4px; }
+
+.journey { display: grid; gap: 8px; margin: 0 4px 18px; padding: 12px; border: 1px solid var(--border-faint); border-radius: 12px; background: rgb(var(--ink-rgb) / 0.02); }
+.journey-head { display: flex; justify-content: space-between; gap: 8px; color: var(--text-tertiary); font-size: 11.5px; font-weight: 500; font-variant-numeric: tabular-nums; }
+.journey-head span:first-child { color: var(--text-primary); }
+.journey-track { position: relative; height: 4px; border-radius: 2px; background: rgb(var(--ink-rgb) / 0.09); }
+.journey-track span { display: block; height: 100%; border-radius: 2px; background: var(--progress-color); transition: width 500ms var(--ease-out); }
+.journey-track i { position: absolute; top: 50%; width: 8px; height: 8px; border-radius: 50%; background: var(--text-heading); box-shadow: 0 0 0 2px var(--bg-base); translate: -50% -50%; }
+.journey-next { display: grid; gap: 1px; margin: 0 -4px -4px; padding: 6px 8px; border-radius: 8px; transition: background-color var(--dur-fast) var(--ease); }
+.journey-next:hover { background: var(--state-hover); }
+.journey-next span { color: var(--text-muted); font-size: 10.5px; font-weight: 600; letter-spacing: .07em; text-transform: uppercase; }
+.journey-next strong { overflow: hidden; color: var(--text-primary); font-size: 13px; font-weight: 550; text-overflow: ellipsis; white-space: nowrap; }
+
+.reader-crumbs-row { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 6px 16px; }
+.reader-crumb-folder { display: inline-flex; gap: 6px; }
+.reader-stop { color: var(--text-muted); font-size: 12px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+
 .read-mark { display: inline-flex; align-items: center; justify-content: center; color: var(--text-secondary); }
 .read-mark-partial {
   width: 10px; height: 10px; border-radius: 50%;
@@ -1064,6 +1114,9 @@ nav[aria-label=Documentation] li a .truncate { white-space: normal; }
 
 .ov-chapters { display: grid; gap: 34px; margin-top: 8px; list-style: none; }
 .ov-chapter { scroll-margin-top: 88px; }
+/* Sub-folders indent under their parent, with a hairline to show nesting. */
+.ov-chapter:not([data-depth="0"]) { margin-top: -14px; margin-left: calc(min(var(--depth, 0), 6) * 22px); padding-left: 14px; border-left: 1px solid var(--border-faint); }
+.ov-chapter:not([data-depth="0"]) h3 { font-size: 16px; }
 .ov-chapter > header { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: baseline; gap: 14px; padding: 0 12px 12px; border-bottom: 1px solid var(--border-faint); }
 .ov-chapter-index { color: var(--text-muted); font-family: var(--font-mono); font-size: 12px; }
 .ov-chapter h3 { color: var(--text-heading); font-size: 18.5px; font-weight: 620; letter-spacing: -.012em; }
