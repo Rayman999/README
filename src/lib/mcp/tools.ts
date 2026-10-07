@@ -32,13 +32,15 @@ const WRITES = new Set(["create_document", "update_document", "create_section", 
 const isWrite = (name: string) => WRITES.has(name);
 
 class ToolError extends Error {}
+/** A project with no folders may hold this many pages before agents must organise it. */
+const UNFILED_LIMIT = 5;
 const descriptions: Record<ToolName, string> = {
   list_projects: "Use this to find projects in the connected README workspace. Returns compact metadata, 50 at a time. Start here rather than guessing project slugs.",
   get_project_context: "Use this to understand a project quickly: stack, entrypoints, conventions, and its layout - every section in reading order with its purpose and page count, plus paginated document summaries tagged with their section. Read the layout before writing so new pages land where readers will look for them. Does not read repository files or infer missing facts.",
   search_docs: "Use this to search documentation using PostgreSQL full-text search. Returns compact results, not full documents; use read_document for detail.",
   read_document: "Use this to read an existing document. Default context view is compact; full view returns the structured document or legacy Markdown. Read full content and its version before updating.",
   get_document_schema: "Use this before writing documentation to get the strict themed JSON schema and example. HTML, custom CSS, scripts and arbitrary block types are not supported. Never invent chart measurements. Never draw ASCII or Unicode art: use the diagram block for flows and the chart block for figures.",
-  create_document: "Use this when the user requests a new document. First read get_project_context and pick the section whose purpose fits; if none fits, create one with create_section rather than leaving the page loose. Prefer a diagram block over describing a flow in prose or characters. Saves a structured draft, never publishes. Slug must be new; if a retry reports a duplicate, read that slug to check whether the original save succeeded. Returns a URL.",
+  create_document: "Use this when the user requests a new document. First read get_project_context and pass section: the slug of the folder whose purpose fits most specifically. Filing is enforced: if the project has folders, a page without a valid section is refused (the error lists the folders); if none fits, create one with create_section first. Prefer a diagram block over describing a flow in prose or characters. Saves a structured draft, never publishes. Slug must be new; if a retry reports a duplicate, read that slug to check whether the original save succeeded. Returns a URL.",
   update_document: "Use this to edit an existing structured draft after reading its full contents. Requires expectedVersion; stale writes fail. Cannot change stable/deprecated or legacy Markdown pages. Preserves a revision and returns a URL.",
   create_section: "Use this when a project has no folder (section) that fits a page you are writing. Folders group pages by what readers come for (for example architecture, how-to guides, reference, decisions, implementation log) and can nest: pass parent to create a sub-folder, e.g. an 'API' folder inside 'Architecture'. Give it a one-sentence purpose saying what belongs there. Check existing folders first; never create near-duplicates, and prefer a shallow tree readers can scan.",
   update_section: "Use this to rename a folder, clarify its one-sentence purpose, or move it under another folder (parent slug) or to the top level (parent null). A folder can't move inside itself. The slug never changes.",
@@ -112,7 +114,17 @@ async function execute(ctx: AgentContext, name: ToolName, raw: unknown): Promise
       const args = toolSchemas.create_document.parse(raw);
       const project = await requireProject(ctx, args.project);
       const section = args.section ? await db.query.sections.findFirst({ where: and(eq(sections.projectId, project.id), eq(sections.slug, args.section)) }) : null;
-      if (args.section && !section) throw new ToolError("Section not found in this project.");
+      // Every new page is filed. With folders, one must be chosen; without
+      // any, a project may only stay flat while it is small.
+      if (!section) {
+        const folders = orderFolders(await db.select({ id: sections.id, slug: sections.slug, title: sections.title, purpose: sections.description, parentId: sections.parentId, position: sections.position })
+          .from(sections).where(eq(sections.projectId, project.id)));
+        const menu = folders.map((folder) => `${folder.slug} (${folder.path.join(" / ")})${folder.purpose ? ` — ${folder.purpose}` : ""}`).join("; ");
+        if (args.section) throw new ToolError(`Folder "${args.section}" not found in this project. Pass one of these as section, or create a better-fitting folder with create_section first: ${menu || "none yet"}.`);
+        if (folders.length) throw new ToolError(`Every page must be filed in a folder. Pass section with the slug whose purpose fits this page best, or create a better-fitting folder (or sub-folder) with create_section first. Folders: ${menu}.`);
+        const [{ value: loose }] = await db.select({ value: sql<number>`count(*)::int` }).from(pages).where(and(eq(pages.projectId, project.id), isNull(pages.sectionId), isNull(pages.deletedAt)));
+        if (loose >= UNFILED_LIMIT) throw new ToolError(`This project already has ${loose} unfiled pages and no folders. Create folders grouped by what readers come for with create_section, file the existing pages into them with move_document, then create this page inside the right folder.`);
+      }
       const page = await createPage({ projectId: project.id, sectionId: section?.id ?? null, slug: args.slug, title: args.title, description: args.description, body: "", document: args.document, tags: args.tags, status: "draft", authorType: "agent", authorId: ctx.userId, agentConnectionId: ctx.grantId });
       return { saved: true, status: page.status, version: page.version, slug: page.slug, url: await pageUrl(project.slug, page) };
     }

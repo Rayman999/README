@@ -104,6 +104,8 @@ test("OAuth + actual MCP transport: isolation, permissions, revisions, replay an
     assert.equal((await callTool(ctx, "create_section", { project: "test", slug: "decisions", title: "Decisions", purpose: "Why we chose what we chose." })).isError, undefined);
     assert.equal((await callTool(ctx, "create_section", { project: "test", slug: "decisions", title: "Again", purpose: "Duplicate." })).isError, true);
     assert.equal((await callTool(ctx, "move_document", { project: "test", page: "agent-draft", section: "missing" })).isError, true);
+    // Once folders exist, every new page must name one.
+    assert.equal((await callTool(ctx, "create_document", { ...args, slug: "unfiled" })).isError, true);
     assert.equal((await callTool(ctx, "move_document", { project: "test", page: "agent-draft", section: "decisions" })).isError, undefined);
     const organised = (await callTool(ctx, "get_project_context", { project: "test" })).structuredContent as {
       layout: { sections: { slug: string; purpose: string; pages: number }[] };
