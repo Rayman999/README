@@ -747,6 +747,8 @@ nav[aria-label=Documentation] li a .truncate { white-space: normal; }
 .nav-folder[data-top="true"] > .nav-folder-row:hover { color: var(--text-tertiary); }
 .nav-folder-chevron { display: inline-flex; color: var(--text-muted); transition: rotate var(--dur-base) var(--ease); }
 .nav-folder-chevron[data-open="true"] { rotate: 90deg; }
+/* First frame after a page change: show folders as they are, no motion. */
+.nav-tree[data-settled="false"] :is(.nav-collapse, .nav-folder-chevron) { transition: none !important; }
 .nav-folder-icon { display: inline-flex; color: var(--text-muted); }
 .nav-folder-title { min-width: 0; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .nav-folder-count { flex-shrink: 0; color: var(--text-muted); font-size: 11px; font-weight: 500; letter-spacing: 0; text-transform: none; font-variant-numeric: tabular-nums; }

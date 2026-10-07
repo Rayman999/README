@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import Link from "@/components/shell/NavigationLink";
 import type { NavPage, NavSection } from "./types";
 import { Icon, ICONS } from "./icons";
@@ -11,6 +11,41 @@ const FOLDER = "M1.5 4.5a1 1 0 0 1 1-1h3l1.5 1.5h5.5a1 1 0 0 1 1 1v6a1 1 0 0 1-1
 const CHECK = "M3.5 8.5l3 3 6-7";
 
 type Node = NavSection & { children: Node[] };
+
+// Which folders the reader has collapsed, shared by every sidebar instance.
+let collapsedCache: Record<string, boolean> | null = null;
+const collapseListeners = new Set<() => void>();
+const NOTHING_COLLAPSED: Record<string, boolean> = {};
+
+function getCollapsed(): Record<string, boolean> {
+  if (!collapsedCache) {
+    try {
+      collapsedCache = JSON.parse(localStorage.getItem(COLLAPSE_KEY) ?? "{}") ?? {};
+    } catch {
+      collapsedCache = {};
+    }
+  }
+  return collapsedCache!;
+}
+
+function getServerCollapsed() {
+  return NOTHING_COLLAPSED;
+}
+
+function setCollapsed(next: Record<string, boolean>) {
+  collapsedCache = next;
+  try {
+    localStorage.setItem(COLLAPSE_KEY, JSON.stringify(next));
+  } catch {
+    /* still applies for this visit */
+  }
+  collapseListeners.forEach((listener) => listener());
+}
+
+function subscribeCollapsed(listener: () => void) {
+  collapseListeners.add(listener);
+  return () => collapseListeners.delete(listener);
+}
 
 function buildTree(sections: NavSection[]) {
   const byId = new Map<string, Node>();
@@ -167,28 +202,18 @@ export function SidebarNav({
   projectHref?: string;
 }) {
   const [query, setQuery] = useState("");
-  const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
+  // Read synchronously from a shared store: the sidebar remounts on every
+  // page, and loading this in an effect made collapsed folders open for one
+  // frame and then animate shut — the "jump".
+  const collapsed = useSyncExternalStore(subscribeCollapsed, getCollapsed, getServerCollapsed);
+  const toggle = (slug: string) => setCollapsed({ ...getCollapsed(), [slug]: !getCollapsed()[slug] });
 
+  // Open/close animation only for clicks, never for the first frame.
+  const [settled, setSettled] = useState(false);
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem(COLLAPSE_KEY);
-      if (raw) setCollapsed(JSON.parse(raw));
-    } catch {
-      /* storage unavailable — everything starts expanded */
-    }
+    const frame = requestAnimationFrame(() => setSettled(true));
+    return () => cancelAnimationFrame(frame);
   }, []);
-
-  const toggle = (slug: string) => {
-    setCollapsed((prev) => {
-      const next = { ...prev, [slug]: !prev[slug] };
-      try {
-        localStorage.setItem(COLLAPSE_KEY, JSON.stringify(next));
-      } catch {
-        /* ignore */
-      }
-      return next;
-    });
-  };
 
   const { roots, order, steps, openPath } = useMemo(() => {
     const roots = buildTree(sections);
@@ -240,7 +265,7 @@ export function SidebarNav({
       )}
       {noMatches && <p role="status" className="px-2 text-sm">No matching pages. Try a shorter title.</p>}
 
-      <ul className="nav-tree">
+      <ul className="nav-tree" data-settled={settled}>
         {roots.map((node) => (
           <Folder key={node.id} node={node} currentHref={currentHref} steps={steps} query={query} collapsed={collapsed} toggle={toggle} openPath={openPath} />
         ))}
