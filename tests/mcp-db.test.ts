@@ -75,7 +75,7 @@ test("OAuth + actual MCP transport: isolation, permissions, revisions, replay an
     });
     await client.connect(transport);
     const listed = await client.listTools();
-    assert.equal(listed.tools.length, 10);
+    assert.equal(listed.tools.length, 11);
     assert.equal(listed.tools.find((t) => t.name === "move_document")?.annotations?.readOnlyHint, false);
     assert.equal(listed.tools.find((t) => t.name === "create_document")?.annotations?.readOnlyHint, false);
     const projectsResult = await client.callTool({ name: "list_projects", arguments: {} });
