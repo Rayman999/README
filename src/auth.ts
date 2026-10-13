@@ -78,11 +78,12 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
         if (!ok || !user?.passwordHash) return null;
 
+        // No image: avatars are stored as data URLs (up to 400 KB), and
+        // anything returned here is copied into the session cookie.
         return {
           id: user.id,
           email: user.email,
           name: user.name,
-          image: user.image,
         };
       },
     }),
@@ -106,6 +107,11 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       return (await registrationAllowed()) || "/login?error=RegistrationClosed";
     },
     async jwt({ token, user }) {
+      // Keep the avatar out of the cookie. A data-URL avatar makes the token
+      // so large that the request headers pass the server's limit (HTTP 431).
+      // Pages read the avatar from the database instead.
+      delete token.picture;
+
       // Initial sign-in: trust it and record who this is.
       if (user?.id) {
         token.uid = user.id;
