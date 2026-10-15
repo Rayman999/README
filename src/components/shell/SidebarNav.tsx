@@ -69,7 +69,7 @@ function subtreePages(node: Node): NavPage[] {
   return [...node.pages, ...node.children.flatMap(subtreePages)];
 }
 
-function JourneyMark({ page, step, active }: { page: NavPage; step: number; active: boolean }) {
+function JourneyMark({ page, active }: { page: NavPage; active: boolean }) {
   const { records } = useReadingRecords();
   const record = records[page.id];
   if (record?.done) {
@@ -87,34 +87,23 @@ function JourneyMark({ page, step, active }: { page: NavPage; step: number; acti
       </span>
     );
   }
-  return <span className="journey-mark journey-step" data-active={active} aria-hidden>{step}</span>;
+  // Unread pages stay unmarked so the list reads as titles, not a checklist.
+  return <span className="journey-mark" data-active={active} aria-hidden />;
 }
 
-/** The project as a route: how far through it you are, and the next stop. */
-function JourneyHeader({ order, currentHref }: { order: NavPage[]; currentHref: string }) {
+/** A quiet one-line sense of how far through the project you are. */
+function JourneyHeader({ order }: { order: NavPage[] }) {
   const { records } = useReadingRecords();
   if (order.length < 2) return null;
   const read = order.filter((page) => records[page.id]?.done).length;
-  const here = order.findIndex((page) => page.href === currentHref);
-  // The next stop is the first unread page after where you are, wrapping round.
-  const after = [...order.slice(here + 1), ...order.slice(0, Math.max(0, here))];
-  const next = here >= 0 ? after.find((page) => !records[page.id]?.done) : order.find((page) => !records[page.id]?.done);
   return (
-    <section className="journey" aria-label="Your route through this project">
+    <section className="journey" aria-label="Your progress through this project">
       <div className="journey-head">
-        <span>{here >= 0 ? `Stop ${here + 1} of ${order.length}` : `${order.length} stops`}</span>
-        <span>{read === order.length ? "All read" : `${read} read`}</span>
+        <span>{read === order.length ? "All read" : `${read} of ${order.length} read`}</span>
       </div>
       <div className="journey-track" aria-hidden>
         <span style={{ width: `${(read / order.length) * 100}%` }} />
-        {here >= 0 && <i style={{ left: `${((here + 0.5) / order.length) * 100}%` }} />}
       </div>
-      {next && (
-        <Link href={next.href} className="journey-next">
-          <span>Next stop</span>
-          <strong>{next.title}</strong>
-        </Link>
-      )}
     </section>
   );
 }
@@ -122,7 +111,6 @@ function JourneyHeader({ order, currentHref }: { order: NavPage[]; currentHref: 
 function Folder({
   node,
   currentHref,
-  steps,
   query,
   collapsed,
   toggle,
@@ -130,10 +118,9 @@ function Folder({
 }: {
   node: Node;
   currentHref: string;
-  steps: Map<string, number>;
   query: string;
   collapsed: Record<string, boolean>;
-  toggle: (slug: string) => void;
+  toggle: (slug: string, collapse: boolean) => void;
   openPath: Set<string>;
 }) {
   const { records } = useReadingRecords();
@@ -143,8 +130,9 @@ function Folder({
   const matches = q ? all.some((page) => page.title.toLowerCase().includes(q)) : true;
   if (!matches) return null;
 
-  // Always show the way to where you are; otherwise respect what was collapsed.
-  const isCollapsed = !q && !openPath.has(node.slug) && (collapsed[node.slug] ?? false);
+  // Always show the way to where you are. Other folders start closed so the
+  // sidebar stays calm, unless the reader opened them.
+  const isCollapsed = !q && !openPath.has(node.slug) && (collapsed[node.slug] ?? true);
   const read = all.filter((page) => records[page.id]?.done).length;
   const top = node.depth === 0;
 
@@ -154,7 +142,7 @@ function Folder({
         type="button"
         aria-expanded={!isCollapsed}
         title={node.description || undefined}
-        onClick={() => toggle(node.slug)}
+        onClick={() => toggle(node.slug, !isCollapsed)}
         className="nav-folder-row"
       >
         <span className="nav-folder-chevron" data-open={!isCollapsed} aria-hidden>
@@ -174,14 +162,14 @@ function Folder({
                 <li key={page.id}>
                   <Link href={page.href} aria-current={active ? "page" : undefined} className="nav-page" data-active={active}>
                     {active && <span aria-hidden className="nav-indicator" />}
-                    <JourneyMark page={page} step={steps.get(page.id) ?? 0} active={active} />
+                    <JourneyMark page={page} active={active} />
                     <span className="nav-page-title">{page.title}</span>
                   </Link>
                 </li>
               );
             })}
             {node.children.map((child) => (
-              <Folder key={child.id} node={child} currentHref={currentHref} steps={steps} query={query} collapsed={collapsed} toggle={toggle} openPath={openPath} />
+              <Folder key={child.id} node={child} currentHref={currentHref} query={query} collapsed={collapsed} toggle={toggle} openPath={openPath} />
             ))}
           </ul>
         </div>
@@ -206,7 +194,7 @@ export function SidebarNav({
   // page, and loading this in an effect made collapsed folders open for one
   // frame and then animate shut — the "jump".
   const collapsed = useSyncExternalStore(subscribeCollapsed, getCollapsed, getServerCollapsed);
-  const toggle = (slug: string) => setCollapsed({ ...getCollapsed(), [slug]: !getCollapsed()[slug] });
+  const toggle = (slug: string, collapse: boolean) => setCollapsed({ ...getCollapsed(), [slug]: collapse });
 
   // Open/close animation only for clicks, never for the first frame.
   const [settled, setSettled] = useState(false);
@@ -215,16 +203,15 @@ export function SidebarNav({
     return () => cancelAnimationFrame(frame);
   }, []);
 
-  const { roots, order, steps, openPath } = useMemo(() => {
+  const { roots, order, openPath } = useMemo(() => {
     const roots = buildTree(sections);
     const order = readingOrder(roots);
-    const steps = new Map(order.map((page, index) => [page.id, index + 1]));
     // Folders on the way to the current page stay open.
     const openPath = new Set<string>();
     const bySlug = new Map(sections.map((section) => [section.id, section]));
     const home = sections.find((section) => section.pages.some((page) => page.href === currentHref));
     for (let at = home; at; at = at.parentId ? bySlug.get(at.parentId) : undefined) openPath.add(at.slug);
-    return { roots, order, steps, openPath };
+    return { roots, order, openPath };
   }, [sections, currentHref]);
 
   const q = query.toLowerCase();
@@ -252,14 +239,14 @@ export function SidebarNav({
         </Link>
       )}
 
-      <JourneyHeader order={order} currentHref={currentHref} />
+      <JourneyHeader order={order} />
 
       {sections.length === 0 && (
         <p className="px-2 text-[12.5px] leading-relaxed text-muted">No pages yet. Pages you add will appear here, grouped into folders.</p>
       )}
 
-      {order.length > 6 && (
-        <label className="nav-filter">Find a page
+      {order.length > 12 && (
+        <label className="nav-filter"><span className="sr-only">Find a page</span>
           <input type="search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Filter page titles…" />
         </label>
       )}
@@ -267,7 +254,7 @@ export function SidebarNav({
 
       <ul className="nav-tree" data-settled={settled}>
         {roots.map((node) => (
-          <Folder key={node.id} node={node} currentHref={currentHref} steps={steps} query={query} collapsed={collapsed} toggle={toggle} openPath={openPath} />
+          <Folder key={node.id} node={node} currentHref={currentHref} query={query} collapsed={collapsed} toggle={toggle} openPath={openPath} />
         ))}
       </ul>
     </nav>
