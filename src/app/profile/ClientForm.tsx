@@ -1,6 +1,6 @@
 "use client";
 import { useActionState, useState } from "react";
-import { createClient } from "./actions";
+import { createClient } from "./connectionActions";
 
 const input = "mt-2 block min-h-11 w-full rounded-input border border-border-visible bg-ink/[0.025] px-3 py-2 text-sm text-primary focus:outline-2 focus:outline-offset-2 focus:outline-ink/30";
 

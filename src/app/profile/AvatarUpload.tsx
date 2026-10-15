@@ -155,16 +155,13 @@ export function AvatarUpload({
           PNG, JPEG or WebP. Cropped to a square and resized to 256px before it
           is saved.
         </p>
-      </div>
 
-      {error && (
-        <p
-          role="alert"
-          className="text-[12.5px] leading-relaxed text-secondary"
-        >
-          {error}
-        </p>
-      )}
+        {error && (
+          <p role="alert" className="mt-1.5 text-[12.5px] leading-relaxed text-secondary">
+            {error}
+          </p>
+        )}
+      </div>
     </div>
   );
 }

@@ -15,7 +15,7 @@ export default async function AuthorizePage({ searchParams }: { searchParams: Pr
   const query = await searchParams;
   let request: Awaited<ReturnType<typeof validateAuthorization>>;
   try { request = await validateAuthorization(query); }
-  catch { return <main id="main-content" tabIndex={-1} className="mx-auto max-w-lg px-6 py-20"><h1 className="text-2xl text-heading">Connection request rejected</h1><p className="mt-4 text-secondary">The client, callback URL, resource or permissions are invalid. Check your connection setup and try again.</p><Link href="/connections" className="mt-6 inline-block underline">Connection settings</Link></main>; }
+  catch { return <main id="main-content" tabIndex={-1} className="mx-auto max-w-lg px-6 py-20"><h1 className="text-2xl text-heading">Connection request rejected</h1><p className="mt-4 text-secondary">The client, callback URL, resource or permissions are invalid. Check your connection setup and try again.</p><Link href="/profile?tab=connections" className="mt-6 inline-block underline">Connection settings</Link></main>; }
   const { params, client, scopes } = request;
   const session = await auth();
   // Drop absent parameters before re-serialising. URLSearchParams stringifies

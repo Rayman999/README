@@ -116,11 +116,16 @@ export async function exchangeToken(clientId: string, form: Record<string, strin
       return null;
     }
     let scopes = grant.scopes.filter((s) => s !== "docs:write" || member.role !== "viewer");
-    if (form.scope) {
+    // Agents such as Codex and Claude resend every scope they know about on
+    // the token request. Narrow to what was actually granted rather than
+    // refusing outright: a viewer, or anyone who left draft writing unticked,
+    // would otherwise never complete a connection. Only a refresh may narrow.
+    if (refreshing && form.scope) {
       let requested: string[];
       try { requested = parseScopes(form.scope); } catch { return null; }
-      if (requested.some((s) => !scopes.includes(s))) return null;
-      scopes = requested;
+      const narrowed = requested.filter((s) => scopes.includes(s));
+      if (!narrowed.length) return null;
+      scopes = narrowed;
     }
     await tx.update(table).set({ usedAt: new Date() }).where(eq(table.hash, digest(raw)));
     await tx.update(oauthGrants).set({ scopes }).where(eq(oauthGrants.id, grant.id));

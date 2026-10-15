@@ -129,6 +129,12 @@ test("OAuth + actual MCP transport: isolation, permissions, revisions, replay an
     const newApproval = await oauth.authorize(authorization, userId, false);
     const readTokens = await oauth.exchangeToken(registered.clientId, { ...exchange, code: newApproval.code });
     assert.equal(readTokens.scope, "docs:read");
+    // Agents resend every scope they know about. A read-only grant must still
+    // connect, narrowed to what was approved, instead of failing outright.
+    const narrowed = await oauth.exchangeToken(registered.clientId, { grant_type: "refresh_token", refresh_token: readTokens.refresh_token, resource: resource(), scope: "docs:read docs:write" });
+    assert.equal(narrowed.scope, "docs:read");
+    const resent = await oauth.exchangeToken(registered.clientId, { ...exchange, code: (await oauth.authorize(authorization, userId, false)).code, scope: "docs:read docs:write" });
+    assert.equal(resent.scope, "docs:read");
     await oauth.revokeToken(registered.clientId, readTokens.access_token);
     await assert.rejects(oauth.authenticateBearer(`Bearer ${readTokens.access_token}`));
     const parallelApproval = await oauth.authorize(authorization, userId, true);
