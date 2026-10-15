@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import Link from "@/components/shell/NavigationLink";
 import type { NavPage, NavSection } from "./types";
 import { Icon, ICONS } from "./icons";
@@ -9,6 +9,8 @@ import { useReadingRecords } from "@/components/reading/ReadingRecords";
 const COLLAPSE_KEY = "readme:nav";
 const FOLDER = "M1.5 4.5a1 1 0 0 1 1-1h3l1.5 1.5h5.5a1 1 0 0 1 1 1v6a1 1 0 0 1-1 1h-10a1 1 0 0 1-1-1z";
 const CHECK = "M3.5 8.5l3 3 6-7";
+const COLLAPSE_ALL = "M4.5 3l3.5 3.5L11.5 3M4.5 13l3.5-3.5 3.5 3.5";
+const EXPAND_ALL = "M4.5 6.5L8 3l3.5 3.5M4.5 9.5L8 13l3.5-3.5";
 
 type Node = NavSection & { children: Node[] };
 
@@ -112,16 +114,14 @@ function Folder({
   node,
   currentHref,
   query,
-  collapsed,
+  isCollapsed: isFolderCollapsed,
   toggle,
-  openPath,
 }: {
   node: Node;
   currentHref: string;
   query: string;
-  collapsed: Record<string, boolean>;
+  isCollapsed: (slug: string) => boolean;
   toggle: (slug: string, collapse: boolean) => void;
-  openPath: Set<string>;
 }) {
   const { records } = useReadingRecords();
   const q = query.toLowerCase();
@@ -130,9 +130,7 @@ function Folder({
   const matches = q ? all.some((page) => page.title.toLowerCase().includes(q)) : true;
   if (!matches) return null;
 
-  // Always show the way to where you are. Other folders start closed so the
-  // sidebar stays calm, unless the reader opened them.
-  const isCollapsed = !q && !openPath.has(node.slug) && (collapsed[node.slug] ?? true);
+  const isCollapsed = !q && isFolderCollapsed(node.slug);
   const read = all.filter((page) => records[page.id]?.done).length;
   const top = node.depth === 0;
 
@@ -169,7 +167,7 @@ function Folder({
               );
             })}
             {node.children.map((child) => (
-              <Folder key={child.id} node={child} currentHref={currentHref} query={query} collapsed={collapsed} toggle={toggle} openPath={openPath} />
+              <Folder key={child.id} node={child} currentHref={currentHref} query={query} isCollapsed={isFolderCollapsed} toggle={toggle} />
             ))}
           </ul>
         </div>
@@ -194,7 +192,6 @@ export function SidebarNav({
   // page, and loading this in an effect made collapsed folders open for one
   // frame and then animate shut — the "jump".
   const collapsed = useSyncExternalStore(subscribeCollapsed, getCollapsed, getServerCollapsed);
-  const toggle = (slug: string, collapse: boolean) => setCollapsed({ ...getCollapsed(), [slug]: collapse });
 
   // Open/close animation only for clicks, never for the first frame.
   const [settled, setSettled] = useState(false);
@@ -202,6 +199,19 @@ export function SidebarNav({
     const frame = requestAnimationFrame(() => setSettled(true));
     return () => cancelAnimationFrame(frame);
   }, []);
+
+  // In a long project the current page can sit below the fold. Bring it into
+  // view inside the sidebar only, never by scrolling the article.
+  const navRef = useRef<HTMLElement>(null);
+  useEffect(() => {
+    const active = navRef.current?.querySelector<HTMLElement>(".nav-page[data-active=true]");
+    let scroller = navRef.current?.parentElement;
+    while (scroller && !/(auto|scroll)/.test(getComputedStyle(scroller).overflowY)) scroller = scroller.parentElement;
+    if (!active || !scroller) return;
+    const box = scroller.getBoundingClientRect();
+    const item = active.getBoundingClientRect();
+    if (item.top < box.top || item.bottom > box.bottom) scroller.scrollTop += item.top - box.top - box.height / 3;
+  }, [currentHref]);
 
   const { roots, order, openPath } = useMemo(() => {
     const roots = buildTree(sections);
@@ -214,11 +224,32 @@ export function SidebarNav({
     return { roots, order, openPath };
   }, [sections, currentHref]);
 
+  // Folders on the way to the current page open on arrival so you can see
+  // where you are; closing one only lasts until you move to another page.
+  const [shut, setShut] = useState<Set<string>>(() => new Set());
+  const isCollapsed = (slug: string) => (openPath.has(slug) ? shut.has(slug) : collapsed[slug] ?? true);
+  const toggle = (slug: string, collapse: boolean) => {
+    if (openPath.has(slug)) {
+      setShut((prev) => {
+        const next = new Set(prev);
+        if (collapse) next.add(slug);
+        else next.delete(slug);
+        return next;
+      });
+    }
+    setCollapsed({ ...getCollapsed(), [slug]: collapse });
+  };
+  const setAll = (collapse: boolean) => {
+    setShut(collapse ? new Set(openPath) : new Set());
+    setCollapsed({ ...getCollapsed(), ...Object.fromEntries(sections.map((section) => [section.slug, collapse])) });
+  };
+  const anyOpen = sections.some((section) => !isCollapsed(section.slug));
+
   const q = query.toLowerCase();
   const noMatches = q && !order.some((page) => page.title.toLowerCase().includes(q));
 
   return (
-    <nav aria-label="Documentation" className="pr-2">
+    <nav ref={navRef} aria-label="Documentation" className="pr-2">
       <Link href="/" className="ease-base mb-4 flex items-center gap-1.5 px-2 text-[11.5px] text-muted transition-colors duration-200 hover:text-secondary">
         <span className="inline-flex rotate-180"><Icon path={ICONS.chevron} size={10} /></span>
         All projects
@@ -252,9 +283,23 @@ export function SidebarNav({
       )}
       {noMatches && <p role="status" className="px-2 text-sm">No matching pages. Try a shorter title.</p>}
 
+      {sections.length > 1 && !q && (
+        <div className="nav-toolbar">
+          <span>Pages</span>
+          <button
+            type="button"
+            onClick={() => setAll(anyOpen)}
+            title={anyOpen ? "Collapse all folders" : "Expand all folders"}
+            aria-label={anyOpen ? "Collapse all folders" : "Expand all folders"}
+          >
+            <Icon path={anyOpen ? COLLAPSE_ALL : EXPAND_ALL} size={13} />
+          </button>
+        </div>
+      )}
+
       <ul className="nav-tree" data-settled={settled}>
         {roots.map((node) => (
-          <Folder key={node.id} node={node} currentHref={currentHref} query={query} collapsed={collapsed} toggle={toggle} openPath={openPath} />
+          <Folder key={node.id} node={node} currentHref={currentHref} query={query} isCollapsed={isCollapsed} toggle={toggle} />
         ))}
       </ul>
     </nav>
