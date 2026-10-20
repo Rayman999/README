@@ -9,16 +9,9 @@ export class OAuthError extends Error {
 
 export async function registerClient(workspaceId: string, input: unknown) {
   const data = clientInput.parse(input);
-  // A public client has no secret to leak, so none is generated. PKCE is what
-  // proves possession of the authorization request instead, and it is required
-  // of every client here regardless of type.
-  const clientSecret = data.clientType === "public" ? null : secret();
-  const [row] = await db.insert(oauthClients).values({
-    ...data,
-    workspaceId,
-    secretHash: clientSecret === null ? null : digest(clientSecret),
-  }).returning();
-  return { clientId: row.id, clientSecret, clientType: data.clientType };
+  const clientSecret = secret();
+  const [row] = await db.insert(oauthClients).values({ ...data, workspaceId, secretHash: digest(clientSecret) }).returning();
+  return { clientId: row.id, clientSecret };
 }
 
 export async function validateAuthorization(input: unknown) {
@@ -26,12 +19,15 @@ export async function validateAuthorization(input: unknown) {
   if (!parsed.success) throw new OAuthError("invalid_request");
   const params = parsed.data;
   const client = await db.query.oauthClients.findFirst({ where: and(eq(oauthClients.id, params.client_id), isNull(oauthClients.revokedAt)) });
-  // Never redirect errors to an unvalidated callback.
-  if (!client || !redirectUriMatches(client.redirectUris, params.redirect_uri, client.clientType)) throw new OAuthError("invalid_client");
-  if (!resourceAccepted(params.resource, client.clientType)) throw new OAuthError("invalid_target");
-  let scopes: string[];
-  try { scopes = parseScopes(params.scope); } catch { throw new OAuthError("invalid_scope"); }
-  if (scopes.some((s) => !client.scopes.includes(s))) throw new OAuthError("invalid_scope");
+  // Never redirect errors to an unvalidated callback. A client without a
+  // secret is a leftover from the retired CLI support and cannot finish.
+  if (!client || !client.secretHash || !redirectUriMatches(client.redirectUris, params.redirect_uri)) throw new OAuthError("invalid_client");
+  if (!resourceAccepted(params.resource)) throw new OAuthError("invalid_target");
+  let requested: string[];
+  try { requested = parseScopes(params.scope); } catch { throw new OAuthError("invalid_scope"); }
+  // Agents ask for every scope the server advertises. Offer what this client
+  // allows rather than refusing the whole connection; docs:read always is.
+  const scopes = requested.filter((s) => client.scopes.includes(s));
   return { params, client, scopes };
 }
 
@@ -56,22 +52,10 @@ export async function authorize(input: unknown, userId: string, allowWrite: bool
   return { code, params };
 }
 
-/**
- * `clientSecret` is undefined only when the request carried no credential at
- * all. That is the one case a public client is allowed; a confidential client
- * without a valid secret is rejected here as it always has been, and a secret
- * presented for a public client is rejected too rather than ignored, so a
- * client cannot be talked into the wrong authentication method.
- */
 export async function authenticateClient(clientId: string, clientSecret?: string) {
   if (!/^[0-9a-f-]{36}$/i.test(clientId) || (clientSecret?.length ?? 0) > 256) throw new OAuthError("invalid_client", 401);
   const client = await db.query.oauthClients.findFirst({ where: and(eq(oauthClients.id, clientId), isNull(oauthClients.revokedAt)) });
-  if (!client) throw new OAuthError("invalid_client", 401);
-  if (client.clientType === "public") {
-    if (clientSecret !== undefined) throw new OAuthError("invalid_client", 401);
-    return client;
-  }
-  if (clientSecret === undefined || !client.secretHash || !matchesSecret(clientSecret, client.secretHash)) {
+  if (!client || clientSecret === undefined || !client.secretHash || !matchesSecret(clientSecret, client.secretHash)) {
     throw new OAuthError("invalid_client", 401);
   }
   return client;
@@ -83,7 +67,7 @@ export async function exchangeToken(clientId: string, form: Record<string, strin
   // exchange must not be able to complete the swap.
   const client = await db.query.oauthClients.findFirst({ where: and(eq(oauthClients.id, clientId), isNull(oauthClients.revokedAt)) });
   if (!client) throw new OAuthError("invalid_client", 401);
-  if (!resourceAccepted(form.resource, client.clientType)) throw new OAuthError("invalid_target");
+  if (!resourceAccepted(form.resource)) throw new OAuthError("invalid_target");
   const refreshing = form.grant_type === "refresh_token";
   if (!refreshing && form.grant_type !== "authorization_code") throw new OAuthError("unsupported_grant_type");
   const raw = refreshing ? form.refresh_token : form.code;
@@ -116,7 +100,7 @@ export async function exchangeToken(clientId: string, form: Record<string, strin
       return null;
     }
     let scopes = grant.scopes.filter((s) => s !== "docs:write" || member.role !== "viewer");
-    // Agents such as Codex and Claude resend every scope they know about on
+    // Agents such as Claude resend every scope they know about on
     // the token request. Narrow to what was actually granted rather than
     // refusing outright: a viewer, or anyone who left draft writing unticked,
     // would otherwise never complete a connection. Only a refresh may narrow.

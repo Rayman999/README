@@ -18,10 +18,8 @@ export default async function AuthorizePage({ searchParams }: { searchParams: Pr
   catch { return <main id="main-content" tabIndex={-1} className="mx-auto max-w-lg px-6 py-20"><h1 className="text-2xl text-heading">Connection request rejected</h1><p className="mt-4 text-secondary">The client, callback URL, resource or permissions are invalid. Check your connection setup and try again.</p><Link href="/profile?tab=connections" className="mt-6 inline-block underline">Connection settings</Link></main>; }
   const { params, client, scopes } = request;
   const session = await auth();
-  // Drop absent parameters before re-serialising. URLSearchParams stringifies
-  // an undefined value as the literal "resource=undefined", which would come
-  // back from the login round-trip as a resource indicator that matches
-  // nothing -- breaking the common case where a Codex user is not signed in.
+  // Drop absent parameters before re-serialising: URLSearchParams stringifies
+  // an undefined value as the literal "undefined".
   const forwarded = Object.fromEntries(Object.entries(params).filter(([, value]) => value !== undefined)) as Record<string, string>;
   if (!session?.user?.id) redirect(`/login?returnTo=${encodeURIComponent(`/oauth/authorize?${new URLSearchParams(forwarded)}`)}`);
   const [member, workspace] = await Promise.all([

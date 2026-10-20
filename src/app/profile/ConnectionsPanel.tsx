@@ -2,7 +2,6 @@ import { and, desc, eq } from "drizzle-orm";
 import { db } from "@/db";
 import { oauthClients, oauthGrants } from "@/db/schema";
 import { resource } from "@/lib/mcp/security";
-import { ClientForm } from "./ClientForm";
 import { clearPastConnections, disableClient, removeClient, removeDisabledClients, revokeConnection } from "./connectionActions";
 import { SetupGuides } from "./SetupGuides";
 import { Panel, PanelHeading, Row } from "./ui";
@@ -38,7 +37,7 @@ export async function ConnectionsPanel({
 
   const clients = owner
     ? await db
-        .select({ id: oauthClients.id, name: oauthClients.name, clientType: oauthClients.clientType, revokedAt: oauthClients.revokedAt, createdAt: oauthClients.createdAt })
+        .select({ id: oauthClients.id, name: oauthClients.name, revokedAt: oauthClients.revokedAt, createdAt: oauthClients.createdAt })
         .from(oauthClients)
         .where(eq(oauthClients.workspaceId, workspaceId))
         .orderBy(desc(oauthClients.createdAt))
@@ -112,18 +111,20 @@ export async function ConnectionsPanel({
       <section>
         <PanelHeading
           title="Connect an agent"
-          description={<>Every agent uses the same server URL: <code className="rounded bg-ink/5 px-1.5 py-0.5 break-all text-primary">{resource()}</code></>}
+          description="Pick your agent and follow the steps."
         />
-        <SetupGuides server={resource()} />
+        <SetupGuides server={resource()} owner={owner} />
       </section>
 
       {owner && (
         <section>
           <PanelHeading
             title="Agent apps"
-            description="Apps registered for this workspace. Disabling one cuts off every connection made through it. Only owners see this."
+            description="Connections created for this workspace. Disabling one cuts off everyone who connected through it. Only owners see this."
           />
-          {liveClients.length > 0 && (
+          {liveClients.length === 0 ? (
+            <p className="text-[13px] text-muted">None yet. Create one above.</p>
+          ) : (
             <Panel>
               <ul className="divide-y divide-border-subtle">
                 {liveClients.map((client) => (
@@ -131,7 +132,7 @@ export async function ConnectionsPanel({
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-[13.5px] text-primary">{client.name}</p>
                       <p className="mt-0.5 break-all text-[11.5px] text-muted">
-                        {client.clientType === "public" ? "CLI app" : "Web app"} · Added {formatDate(client.createdAt)} · {client.id}
+                        Added {formatDate(client.createdAt)} · {client.id}
                       </p>
                     </div>
                     <form action={disableClient}>
@@ -169,13 +170,6 @@ export async function ConnectionsPanel({
               )}
             </details>
           )}
-
-          <details className="mt-5" open={liveClients.length === 0}>
-            <summary className="cursor-pointer text-[13px] font-medium text-secondary hover:text-primary">
-              Register an app
-            </summary>
-            <ClientForm />
-          </details>
         </section>
       )}
     </div>

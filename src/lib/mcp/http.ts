@@ -11,9 +11,7 @@ export async function tokenRequest(req: Request) {
   if ([...params.keys()].some((k) => params.getAll(k).length !== 1)) throw new OAuthError("invalid_request");
   const form = Object.fromEntries(params);
   let id = form.client_id ?? "";
-  // Undefined means "no credential was presented", which is distinct from an
-  // empty one. Public clients rely on that distinction; confidential clients
-  // are rejected by either.
+  // A missing or empty secret is rejected by authenticateClient.
   let password: string | undefined = form.client_secret;
   const header = req.headers.get("authorization");
   if (header) {

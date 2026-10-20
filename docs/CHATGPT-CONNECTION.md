@@ -15,20 +15,20 @@ reasoning; README validates, retrieves and stores documentation.
    issuer and `/api/mcp` returns HTTP 401 with a `WWW-Authenticate` header when
    no access token is supplied. Do not expose the database publicly.
 
-## Connect ChatGPT
+## Connect Claude or ChatGPT
 
-1. In ChatGPT on the web, enable Developer mode, then create a custom MCP
-   connection. Availability and labels depend on the account/workspace.
-2. Server URL: `https://readme.lluminaa.net/api/mcp`. Authentication: OAuth.
-3. Copy the exact OAuth callback URL shown by ChatGPT. Do not guess its path.
-4. In README, open **Profile → Agent connections** as a workspace owner.
-   Register a client named ChatGPT with that callback URL. Check the draft-writing
-   option if desired. Callback URIs use exact matching and must be HTTPS.
-5. Copy the generated client ID and secret into ChatGPT's OAuth configuration.
-   The secret is displayed once; only its SHA-256 hash is stored. Never paste
-   the secret into a chat. If lost, disable the client and create another.
-6. Connect, log into README and approve read access. Explicitly check draft
-   writing on the consent screen to allow create/update tools.
+Everything is on **Profile → Connections**. Pick the agent's tab and follow it.
+
+1. As a workspace owner, click **Create Claude connection** (or ChatGPT). The
+   callback (`https://claude.ai/api/mcp/auth_callback` for Claude,
+   `https://chatgpt.com/connector_platform_oauth_redirect` for ChatGPT, which
+   can be overridden) and draft-writing permission are filled in.
+2. Copy the client ID and secret it shows. The secret is displayed once; only
+   its SHA-256 hash is stored. If lost, disable the app and create another.
+3. In the agent's connector settings, add a custom connector with the server
+   URL `https://readme.lluminaa.net/api/mcp` and paste the ID and secret.
+4. Connect, log into README and approve. Tick draft writing on the consent
+   screen to allow create/update tools.
 7. Select the connection in a conversation. Try:
 
    > Use README to list my projects. Read the context for the README project,
@@ -80,11 +80,8 @@ document before retrying. Slug uniqueness prevents duplicate create retries.
   expired grants and their tokens are cleaned during subsequent authorizations.
 - Do not log Authorization headers, OAuth secrets, codes or token response
   bodies at the reverse proxy. Configure access logs to omit OAuth query strings.
-- The generic MCP endpoint can support other clients, but Claude setup has not
-  been verified. Register a separate client with its exact callback URLs.
-- Codex CLI connects as a separate *public* client (no secret, PKCE only, and
-  loopback callbacks). See `docs/CODEX-CONNECTION.md`. Nothing about the
-  confidential client type used here changes because of it.
+- Every client is a web app with a secret and an exact HTTPS callback. CLI
+  (public, loopback) clients are not supported.
 
 ## Tests
 

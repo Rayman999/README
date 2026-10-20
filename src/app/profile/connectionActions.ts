@@ -10,6 +10,7 @@ import { oauthClients, oauthGrants } from "@/db/schema";
 import { getMembership } from "@/lib/workspace";
 import { registerClient } from "@/lib/mcp/oauth";
 import { issuer } from "@/lib/mcp/security";
+import { isProvider, PROVIDERS, type ProviderId } from "./providers";
 
 async function currentMember() {
   if ((await headers()).get("origin") !== issuer()) throw new Error("Invalid request origin.");
@@ -20,24 +21,24 @@ async function currentMember() {
   return member;
 }
 
-export type ClientState = { error?: string; clientId?: string; clientSecret?: string; clientType?: "confidential" | "public" };
+export type ClientState = { error?: string; provider?: ProviderId; clientId?: string; clientSecret?: string };
 export async function createClient(_previous: ClientState, form: FormData): Promise<ClientState> {
   const member = await currentMember();
-  if (member.role !== "owner") return { error: "Only owners can register agent apps." };
+  if (member.role !== "owner") return { error: "Only owners can create connections." };
+  const provider = form.get("provider");
+  if (!isProvider(provider)) return { error: "Unknown agent service." };
+  const config = PROVIDERS[provider];
+  const callback = config.editableCallback ? String(form.get("callback") ?? "").trim() || config.callback : config.callback;
   try {
     const existing = await db.select({ id: oauthClients.id }).from(oauthClients).where(eq(oauthClients.workspaceId, member.workspaceId)).limit(51);
-    if (existing.length >= 50) return { error: "Client limit reached. Contact the server administrator." };
-    const result = await registerClient(member.workspaceId, {
-      name: form.get("name"),
-      clientType: form.get("clientType") === "public" ? "public" : "confidential",
-      redirectUris: String(form.get("redirectUris") ?? "").split(/\r?\n/).map((s) => s.trim()).filter(Boolean),
-      scopes: form.get("write") === "on" ? ["docs:read", "docs:write"] : ["docs:read"],
-    });
+    if (existing.length >= 50) return { error: "Client limit reached. Remove disabled apps first." };
+    // Draft writing is always offered; each person still decides on the
+    // approval screen, and viewers never receive it.
+    const result = await registerClient(member.workspaceId, { name: config.label, redirectUris: [callback], scopes: ["docs:read", "docs:write"] });
     revalidatePath("/profile");
-    // A public client has no secret; the panel must not imply one was withheld.
-    return { clientId: result.clientId, clientType: result.clientType, ...(result.clientSecret ? { clientSecret: result.clientSecret } : {}) };
+    return { provider, ...result };
   } catch (error) {
-    return { error: error instanceof z.ZodError ? error.issues[0].message : "Could not create the client. Try again." };
+    return { error: error instanceof z.ZodError ? error.issues[0].message : "Could not create the connection. Try again." };
   }
 }
 
