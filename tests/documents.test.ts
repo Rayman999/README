@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { z } from "zod";
-import { documentSchema, documentText, documentContext, starterDocument } from "../src/lib/documents/schema";
+import { documentSchema, documentText, documentContext, documentSectionMarkdown, starterDocument } from "../src/lib/documents/schema";
 import { DocumentRenderer } from "../src/components/documents/DocumentRenderer";
 import { readJson } from "../src/lib/api/read-json";
 
@@ -35,6 +35,21 @@ test("derives readable search text and compact context without blocks", () => {
   assert.equal(context.outline[0].id, "doc-section-0");
   assert.match(documentText(parsed), /Guides: 7/);
   assert.doesNotMatch(documentText(parsed), /schemaVersion/);
+});
+
+test("reads one outline section: up to the next heading of the same or higher level", () => {
+  const doc = documentSchema.parse({ ...starterDocument, keyFacts: ["Page-level fact"], blocks: [
+    { type: "heading", level: 2, text: "Alpha" }, { type: "paragraph", text: "alpha body" },
+    { type: "heading", level: 3, text: "Alpha child" }, { type: "paragraph", text: "child body" },
+    { type: "heading", level: 2, text: "Beta" }, { type: "paragraph", text: "beta body" },
+  ] });
+  const alpha = documentSectionMarkdown(doc, "doc-section-0")!;
+  assert.match(alpha, /## Alpha[\s\S]*alpha body[\s\S]*### Alpha child[\s\S]*child body/);
+  assert.doesNotMatch(alpha, /Beta|Page-level fact/);
+  assert.equal(documentSectionMarkdown(doc, "doc-section-2"), "### Alpha child\n\nchild body");
+  assert.equal(documentSectionMarkdown(doc, "doc-section-1"), null);
+  assert.equal(documentSectionMarkdown(doc, "doc-section-99"), null);
+  assert.deepEqual(documentContext(doc).outline.map((entry) => entry.words), [9, 5, 4]);
 });
 
 test("renderer escapes hostile text; chart data remains accessible", () => {

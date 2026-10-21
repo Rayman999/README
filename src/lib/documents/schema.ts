@@ -156,11 +156,34 @@ export function documentHeadings(doc: ReadmeDocument) {
   return doc.blocks.flatMap((block, i) => block.type === "heading" ? [{ id: `doc-section-${i}`, text: block.text, level: block.level }] : []);
 }
 
+/** Blocks under one heading: from it until the next heading of the same or higher level. */
+function sectionBlocks(doc: ReadmeDocument, start: number) {
+  const heading = doc.blocks[start];
+  if (heading?.type !== "heading") return null;
+  const end = doc.blocks.findIndex((block, i) => i > start && block.type === "heading" && block.level <= heading.level);
+  return doc.blocks.slice(start, end === -1 ? undefined : end);
+}
+
+/** One outline section as Markdown, so agents can read just the part they need. */
+export function documentSectionMarkdown(doc: ReadmeDocument, id: string): string | null {
+  const match = /^doc-section-(\d+)$/.exec(id);
+  const blocks = match ? sectionBlocks(doc, Number(match[1])) : null;
+  if (!blocks) return null;
+  return documentToMarkdown({ ...doc, keyFacts: [], codePaths: [], relatedPages: [], openQuestions: [], blocks });
+}
+
+/**
+ * The compact view agents read first: everything except the blocks, plus an
+ * outline whose ids can be passed back to read a single section. `words` lets
+ * an agent judge what a section costs before reading it.
+ */
 export function documentContext(doc: ReadmeDocument) {
   const { blocks: _blocks, ...context } = doc;
   void _blocks;
-  return { ...context, outline: documentHeadings(doc) };
+  return { ...context, outline: documentHeadings(doc).map((heading) => ({ ...heading, words: wordCount(documentSectionMarkdown(doc, heading.id) ?? "") })) };
 }
+
+const wordCount = (value: string) => value.split(/\s+/).filter(Boolean).length;
 
 export const starterDocument: ReadmeDocument = {
   schemaVersion: 1,

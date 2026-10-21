@@ -114,6 +114,28 @@ test("OAuth + actual MCP transport: isolation, permissions, revisions, replay an
     assert.equal(organised.layout.sections.find((entry) => entry.slug === "decisions")?.purpose, "Why we chose what we chose.");
     assert.equal(organised.layout.sections.find((entry) => entry.slug === "decisions")?.pages, 1);
     assert.equal(organised.pages.find((entry) => entry.slug === "agent-draft")?.section, "decisions");
+    assert.equal("summary" in organised.pages[0], false);
+    const filtered = (await callTool(ctx, "get_project_context", { project: "test", section: "decisions" })).structuredContent as { pages: { slug: string }[] };
+    assert.deepEqual(filtered.pages.map((entry) => entry.slug), ["agent-draft"]);
+    assert.equal("pages" in (await callTool(ctx, "get_project_context", { project: "test", pages: false })).structuredContent!, false);
+    assert.equal((await callTool(ctx, "get_project_context", { project: "test", section: "missing" })).isError, true);
+
+    // Token-lean reading: ranked search with snippets, any-word fallback, single sections.
+    const ranked = (await callTool(ctx, "search_docs", { query: "guides", project: "test" })).structuredContent as { match: string; results: { page: string; section: string | null; snippet: string }[] };
+    assert.equal(ranked.match, "all");
+    assert.equal(ranked.results[0].section, "decisions");
+    assert.match(ranked.results[0].snippet, /\*\*Guides\*\*/);
+    assert.equal("summary" in ranked.results[0], false);
+    const fallback = (await callTool(ctx, "search_docs", { query: "guides zzznomatch", project: "test" })).structuredContent as { match: string; results: unknown[] };
+    assert.equal(fallback.match, "any");
+    assert.equal(fallback.results.length, 1);
+    const outline = ((await callTool(ctx, "read_document", { project: "test", page: "agent-draft" })).structuredContent as { context: { outline: { id: string; words: number }[] } }).context.outline;
+    assert.ok(outline[0].words > 0);
+    const part = (await callTool(ctx, "read_document", { project: "test", page: "agent-draft", section: outline[1].id })).structuredContent as { text: string };
+    assert.match(part.text, /^## Example chart/);
+    assert.doesNotMatch(part.text, /At a glance/);
+    assert.match(((await callTool(ctx, "read_document", { project: "test", page: "agent-draft", view: "text" })).structuredContent as { text: string }).text, /At a glance[\s\S]*How a request flows/);
+    assert.equal((await callTool(ctx, "read_document", { project: "test", page: "agent-draft", section: "doc-section-1" })).isError, true);
 
     await db.update(s.workspaceMembers).set({ role: "viewer" }).where(and(eq(s.workspaceMembers.workspaceId, workspaceId), eq(s.workspaceMembers.userId, userId)));
     const readOnly = await oauth.authenticateBearer(`Bearer ${tokens.access_token}`);
