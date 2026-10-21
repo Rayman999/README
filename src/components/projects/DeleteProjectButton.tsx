@@ -67,7 +67,7 @@ export function DeleteProjectButton({ project }: {
           <p className="font-medium text-primary">Delete “{project.name}”?</p>
           <p className="mt-2 text-secondary">
             This permanently deletes the project and its pages, history, sections,
-            and learning paths. This cannot be undone. Sub-projects stay in your library.
+            and learning paths. This cannot be undone. Projects inside it move up a level.
           </p>
           <div className="mt-4 flex flex-wrap gap-2">
             <button type="button" autoFocus disabled={working} onClick={cancel}

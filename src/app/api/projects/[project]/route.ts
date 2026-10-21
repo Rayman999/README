@@ -2,7 +2,7 @@ import { z } from "zod";
 import { canWrite, requireSession, requireWorkspace } from "@/lib/api/context";
 import { badRequest, forbidden, notFound, unauthorized } from "@/lib/api/problem";
 import { readJson } from "@/lib/api/read-json";
-import { deleteProject, updateProjectDetails } from "@/lib/projects";
+import { deleteProject, getProjectBySlug, moveProject, updateProjectDetails } from "@/lib/projects";
 
 const deleteSchema = z.strictObject({ id: z.string().uuid() });
 
@@ -17,6 +17,8 @@ const patchSchema = z.strictObject({
   glossary: z.record(z.string().trim().min(1).max(80), z.string().trim().min(1).max(500))
     .refine((value) => Object.keys(value).length <= 200, "Up to 200 glossary terms.")
     .optional(),
+  // The project this one sits inside, or null for the top level.
+  parentId: z.uuid().nullable().optional(),
 });
 
 export async function PATCH(
@@ -34,7 +36,14 @@ export async function PATCH(
   const workspace = await requireWorkspace();
   if (!workspace) return notFound("No workspace exists yet.");
   const { project: slug } = await params;
-  if (!(await updateProjectDetails(workspace.id, slug, parsed.data))) return notFound("This project no longer exists.");
+  const { parentId, ...details } = parsed.data;
+  if (parentId !== undefined) {
+    const project = await getProjectBySlug(workspace.id, slug);
+    if (!project) return notFound("This project no longer exists.");
+    const moved = await moveProject(workspace.id, project.id, parentId);
+    if ("error" in moved) return badRequest(moved.error);
+  }
+  if (Object.keys(details).length && !(await updateProjectDetails(workspace.id, slug, details))) return notFound("This project no longer exists.");
   return new Response(null, { status: 204 });
 }
 

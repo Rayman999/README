@@ -15,6 +15,7 @@ import { ReadMinutes } from "@/components/reading/ReaderFeatures";
 import { ChapterProgress, ReadingMap, StartCard, TotalReadingTime, type OverviewPage, type OverviewSection } from "@/components/projects/Overview";
 import { toNavSections } from "@/lib/nav";
 import { OverviewEditor } from "@/components/projects/OverviewEditor";
+import { MoveProject } from "@/components/projects/MoveProject";
 import type { NavSection } from "@/components/shell/types";
 
 export const dynamic = "force-dynamic";
@@ -164,11 +165,9 @@ export default async function ProjectPage({
     openQuestions: project.openQuestions,
     glossary: project.glossary ?? {},
   };
-  const neighbours = [
-    ...(overview.parent ? [{ ...overview.parent, relation: "Part of" }] : []),
-    ...overview.children.map((child) => ({ ...child, relation: "Sub-project" })),
-    ...overview.related.map((entry) => ({ ...entry, relation: "Related" })),
-  ];
+  // Parent and child projects have their own places on the page; this panel
+  // is only for projects linked across the tree.
+  const neighbours = overview.related.map((entry) => ({ ...entry, relation: "Related" }));
 
   const hasSide = glossary.length > 0 || project.entrypoints.length > 0 || project.conventions.length > 0
     || project.openQuestions.length > 0 || neighbours.length > 0 || (editor && missing.length > 0);
@@ -184,6 +183,8 @@ export default async function ProjectPage({
       currentHref={projectHref}
       projectName={project.name}
       projectHref={projectHref}
+      projectTrail={overview.ancestors}
+      childProjects={overview.children}
       toc={[]}
       signOutAction={signOutAction}
       userEmail={session.user.email}
@@ -195,6 +196,12 @@ export default async function ProjectPage({
           <div className="ov-cover-text">
             <nav aria-label="Breadcrumb" className="reader-crumbs">
               <Link href="/">Library</Link>
+              {overview.ancestors.map((ancestor) => (
+                <span key={ancestor.slug} className="contents">
+                  <span aria-hidden>/</span>
+                  <Link href={`/p/${ancestor.slug}`}>{ancestor.name}</Link>
+                </span>
+              ))}
               <span aria-hidden>/</span>
               <span>{project.name}</span>
             </nav>
@@ -221,6 +228,7 @@ export default async function ProjectPage({
 
         {/* Stats: only the ones that say something about this project. */}
         <dl className="ov-stats">
+          {overview.children.length > 0 && <div><dt>Projects</dt><dd>{overview.children.length}</dd></div>}
           <div><dt>Pages</dt><dd>{readingOrder.length}</dd></div>
           <div><dt>To read it all</dt><dd><TotalReadingTime words={readingOrder.map((page) => page.words)} /></dd></div>
           {tree.sections.length > 0 && <div><dt>Folders</dt><dd>{tree.sections.length}</dd></div>}
@@ -258,6 +266,34 @@ export default async function ProjectPage({
 
         <div className="ov-body" data-side={hasSide}>
           <div className="ov-main">
+            {(overview.children.length > 0 || editor) && (
+              <section className="ov-projects" aria-labelledby="projects">
+                <div className="ov-contents-head">
+                  <h2 id="projects">Projects in {project.name}</h2>
+                  {editor && <Link href={`/new?parent=${encodeURIComponent(project.slug)}`} className="toolbar-button">+ New project here</Link>}
+                </div>
+                {overview.children.length === 0 ? (
+                  <p className="ov-hint">Group related work here. A project inside {project.name} gets its own folders and pages.</p>
+                ) : (
+                  <ul className="ov-project-grid">
+                    {overview.children.map((child) => (
+                      <li key={child.slug}>
+                        <Link href={`/p/${child.slug}`} className="ov-project-card">
+                          <span className="ov-project-icon" aria-hidden><Icon path={ICONS.project} size={14} /></span>
+                          <span className="ov-project-name">{child.name}</span>
+                          <span className="ov-project-summary">{child.summary}</span>
+                          <span className="ov-project-meta">
+                            {child.pages} page{child.pages === 1 ? "" : "s"}
+                            {child.projects > 0 && ` · ${child.projects} project${child.projects === 1 ? "" : "s"}`}
+                          </span>
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </section>
+            )}
+
             <div className="ov-contents-head">
               <h2 id="contents">Contents</h2>
               {editor && <Link href={`/compose/${project.slug}`} className="toolbar-button">+ New document</Link>}
@@ -296,6 +332,7 @@ export default async function ProjectPage({
 
             {editor && (
               <div className="ov-organise">
+                <MoveProject project={project.slug} name={project.name} parentId={overview.parentId} targets={overview.moveTargets} />
                 <SectionManager project={project.slug} sections={tree.sections.map((entry) => ({ id: entry.id, slug: entry.slug, title: entry.title, description: entry.description, parentId: entry.parentId, depth: entry.depth, position: entry.position, pageCount: entry.pages.length }))} />
               </div>
             )}

@@ -2,7 +2,7 @@ import Link from "@/components/shell/NavigationLink";
 import { redirect } from "next/navigation";
 import { auth, signOut } from "@/auth";
 import { getWorkspace } from "@/lib/workspace";
-import { listProjects } from "@/lib/projects";
+import { listProjectTree } from "@/lib/projects";
 import { Header } from "@/components/shell/Header";
 import { DeleteProjectButton } from "@/components/projects/DeleteProjectButton";
 import { Icon, ICONS, HEADER_H } from "@/components/shell/icons";
@@ -21,7 +21,7 @@ export default async function Home() {
   if (!session?.user) redirect("/login");
 
   const workspace = await getWorkspace();
-  const projects = workspace ? await listProjects(workspace.id) : [];
+  const projects = workspace ? await listProjectTree(workspace.id) : [];
   const canEdit = session.user.role === "owner" || session.user.role === "editor";
 
   async function signOutAction() {
@@ -29,7 +29,10 @@ export default async function Home() {
     await signOut({ redirectTo: "/login" });
   }
 
-  const libraryProjects = projects;
+  // The library shows top-level projects. Projects inside them are listed on
+  // their card, and in full on the project's own page.
+  const libraryProjects = projects.filter((project) => project.depth === 0);
+  const nested = projects.length - libraryProjects.length;
 
   return (
     <div className="min-h-screen bg-base">
@@ -48,7 +51,7 @@ export default async function Home() {
             <p className="mt-2.5 font-[family-name:var(--font-reading)] text-[17px] text-secondary">
               {projects.length === 0
                 ? "Every project's guides, standards and decisions, in one place to read."
-                : `${projects.length} project${projects.length === 1 ? "" : "s"} documented. Pick one to start reading.`}
+                : `${libraryProjects.length} project${libraryProjects.length === 1 ? "" : "s"}${nested ? `, with ${nested} more inside them` : ""}. Pick one to start reading.`}
             </p>
           </div>
 
@@ -91,9 +94,7 @@ export default async function Home() {
         ) : (
           <ul className="stagger grid gap-3 sm:grid-cols-2">
             {libraryProjects.map((project) => {
-              const children = projects.filter(
-                (p) => p.parentId === project.id,
-              );
+              const children = project.children;
               return (
                 <li key={project.id}>
                   <div className="project-card ease-base flex h-full flex-col rounded-code border border-border-subtle bg-ink/[0.018] transition-[background-color,transform] duration-200 hover:bg-ink/[0.035]">
@@ -112,13 +113,25 @@ export default async function Home() {
                       <p className="mt-1.5 line-clamp-2 text-[13px] leading-relaxed text-secondary">
                         {project.summary}
                       </p>
-                      {children.length > 0 && (
-                        <p className="mt-2.5 text-[11.5px] text-muted">
-                          {children.length} sub-project
-                          {children.length === 1 ? "" : "s"}
-                        </p>
-                      )}
                     </Link>
+                    {children.length > 0 && (
+                      <ul aria-label={`Projects in ${project.name}`} className="mt-3 flex flex-wrap gap-1.5">
+                        {children.slice(0, 6).map((child) => (
+                          <li key={child.id}>
+                            <Link
+                              href={`/p/${child.slug}`}
+                              className="ease-base flex h-7 items-center gap-1.5 rounded-control border border-border-subtle px-2.5 text-[12px] text-secondary transition-colors duration-200 hover:bg-ink/[0.05] hover:text-primary"
+                            >
+                              <Icon path={ICONS.project} size={12} />
+                              {child.name}
+                            </Link>
+                          </li>
+                        ))}
+                        {children.length > 6 && (
+                          <li className="flex h-7 items-center px-1 text-[12px] text-muted">+{children.length - 6} more</li>
+                        )}
+                      </ul>
+                    )}
                     {canEdit && <DeleteProjectButton project={{ id: project.id, slug: project.slug, name: project.name }} />}
                   </div>
                 </li>

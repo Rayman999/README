@@ -1,6 +1,6 @@
 import "server-only";
 import { documentToMarkdown } from "@/lib/documents/schema";
-import { getPageBySlug, getProjectBySlug, getProjectTree } from "@/lib/projects";
+import { getPageBySlug, getProjectBySlug, getProjectTree, listProjectTree } from "@/lib/projects";
 import { issuer } from "@/lib/mcp/security";
 
 const STATUS: Record<string, string> = {
@@ -21,7 +21,8 @@ export async function buildPageExport(workspaceId: string, projectSlug: string, 
   if (!project) return null;
   const page = await getPageBySlug(project.id, pageSlug);
   if (!page) return null;
-  const tree = await getProjectTree(project.id);
+  const [tree, projectTree] = await Promise.all([getProjectTree(project.id), listProjectTree(workspaceId)]);
+  const place = projectTree.find((entry) => entry.id === project.id);
 
   const section = tree.sections.find((entry) => entry.id === page.sectionId) ?? null;
   const base = issuer();
@@ -62,6 +63,8 @@ export async function buildPageExport(workspaceId: string, projectSlug: string, 
     "| | |",
     "| --- | --- |",
     `| Project | ${project.name} (\`${project.slug}\`) — ${project.summary.replace(/\n/g, " ")} |`,
+    ...(place?.ancestors.length ? [`| Inside | ${place.path.slice(0, -1).join(" / ")} |`] : []),
+    ...(place?.children.length ? [`| Projects inside it | ${place.children.map((child) => `${child.name} (\`${child.slug}\`)`).join(", ")} |`] : []),
     ...(section ? [`| Folder | ${section.path.join(" / ")}${section.description ? ` — ${section.description}` : ""} |`] : []),
     `| Page | \`${page.slug}\` · version ${page.version} · updated ${updated} |`,
     `| Status | ${STATUS[page.status] ?? page.status} |`,

@@ -91,7 +91,7 @@ projects
   summary         text not null           -- 1–2 sentences
   status          text not null           -- active | maintenance | archived | planned
   version         text
-  parent_id       uuid fk projects null   -- one level of nesting only
+  parent_id       uuid fk projects null   -- projects nest to any depth
   repository_url  text
   stack           text[]                  -- ["Node.js 20", "Fastify 4"]
   entrypoints     text[]
@@ -159,7 +159,7 @@ Notes:
 
 **`conventions` and `open_questions` are the highest-value fields in the schema.** They're what an agent reads to avoid repeating decisions. Make them first-class in the UI, not buried in a settings tab.
 
-**`parent_id` is one level deep.** Enforce it — reject a project whose parent already has a parent. Deeper hierarchies break the two-level sidebar.
+**Projects nest to any depth** (e.g. Tilde / Website / Marketing). A project can't move inside itself or its own projects; deleting one moves its projects up to its parent. The sidebar shows the trail above the project and its direct child projects before its folders.
 
 **Search:** a generated `tsvector` over title, description, and body, with title weighted highest. Postgres full-text is sufficient here; don't reach for an external search service.
 

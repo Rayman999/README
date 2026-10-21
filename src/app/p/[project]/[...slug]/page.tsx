@@ -7,6 +7,7 @@ import {
   getProjectBySlug,
   getProjectTree,
   getSectionById,
+  listProjectTree,
 } from "@/lib/projects";
 import { renderMarkdown } from "@/lib/markdown/render";
 import { documentHeadings, type ReadmeDocument } from "@/lib/documents/schema";
@@ -86,12 +87,16 @@ export default async function DocPage({
   }
 
   const userId = session.user.id!;
-  const [tree, { html, headings }, progress, highlights] = await Promise.all([
+  const [tree, { html, headings }, progress, highlights, projectTree] = await Promise.all([
     getProjectTree(project.id),
     page.document ? Promise.resolve({ html: "", headings: documentHeadings(page.document) }) : renderMarkdown(page.body),
     getProgressForProject(userId, project.id),
     listHighlightsForPage(userId, page.id),
+    listProjectTree(workspace.id),
   ]);
+  const place = projectTree.find((entry) => entry.id === project.id);
+  const projectTrail = (place?.ancestors ?? []).map((a) => ({ slug: a.slug, name: a.name }));
+  const childProjects = (place?.children ?? []).map((c) => ({ slug: c.slug, name: c.name }));
 
   const navSections: NavSection[] = toNavSections(tree, projectHref);
 
@@ -119,6 +124,8 @@ export default async function DocPage({
       currentHref={canonicalHref}
       projectName={project.name}
       projectHref={projectHref}
+      projectTrail={projectTrail}
+      childProjects={childProjects}
       toc={toc}
       signOutAction={signOutAction}
       userEmail={session.user.email}
@@ -135,6 +142,12 @@ export default async function DocPage({
         <header>
           <div className="reader-crumbs-row">
             <nav aria-label="Breadcrumb" className="reader-crumbs">
+              {projectTrail.map((ancestor) => (
+                <span key={ancestor.slug} className="contents">
+                  <Link href={`/p/${ancestor.slug}`}>{ancestor.name}</Link>
+                  <span aria-hidden>/</span>
+                </span>
+              ))}
               <Link href={projectHref}>{project.name}</Link>
               {folderPath.map((name, i) => (
                 <span key={i} className="reader-crumb-folder">

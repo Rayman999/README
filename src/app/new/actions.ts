@@ -62,7 +62,7 @@ export async function createProject(
   }
 
   if (parsed.data.parentId) {
-    const problem = await validateParent(parsed.data.parentId);
+    const problem = await validateParent(workspace.id, parsed.data.parentId);
     if (problem) return { error: problem };
   }
 

@@ -13,6 +13,7 @@
     "test:pages:db": "tsx --test tests/pages-crud-db.test.ts",
     "test:projects:db": "tsx --test tests/projects-delete-db.test.ts",
     "test:mcp": "tsx --test tests/mcp.test.ts",
+    "test:project-tree": "tsx --test tests/project-tree.test.ts",
     "test:mcp:db": "tsx --test tests/mcp-db.test.ts",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",

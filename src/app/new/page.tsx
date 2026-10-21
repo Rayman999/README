@@ -2,14 +2,14 @@ import Link from "@/components/shell/NavigationLink";
 import { redirect } from "next/navigation";
 import { auth, signOut } from "@/auth";
 import { getWorkspace } from "@/lib/workspace";
-import { listTopLevelProjects } from "@/lib/projects";
+import { listProjectTree } from "@/lib/projects";
 import { Header } from "@/components/shell/Header";
 import { HEADER_H } from "@/components/shell/icons";
 import { NewProjectForm } from "./NewProjectForm";
 
 export const dynamic = "force-dynamic";
 
-export default async function NewProjectPage() {
+export default async function NewProjectPage({ searchParams }: { searchParams: Promise<{ parent?: string }> }) {
   const session = await auth();
   if (!session?.user) redirect("/login");
 
@@ -17,7 +17,11 @@ export default async function NewProjectPage() {
   if (!canEdit) redirect("/");
 
   const workspace = await getWorkspace();
-  const parents = workspace ? await listTopLevelProjects(workspace.id) : [];
+  const tree = workspace ? await listProjectTree(workspace.id) : [];
+  const parents = tree.map((p) => ({ id: p.id, label: p.path.join(" / ") }));
+  // "New project here" on a project page links with ?parent=<slug>.
+  const { parent: parentSlug } = await searchParams;
+  const parent = tree.find((p) => p.slug === parentSlug);
 
   async function signOutAction() {
     "use server";
@@ -37,11 +41,17 @@ export default async function NewProjectPage() {
             Workspace
           </Link>
           <span className="mx-1.5 opacity-50">/</span>
+          {parent && (
+            <>
+              <Link href={`/p/${parent.slug}`} className="ease-base transition-colors duration-200 hover:text-tertiary">{parent.name}</Link>
+              <span className="mx-1.5 opacity-50">/</span>
+            </>
+          )}
           <span>New project</span>
         </nav>
 
         <h1 className="mt-3 text-[24px] leading-tight font-semibold text-heading">
-          Create a project
+          {parent ? `New project in ${parent.name}` : "Create a project"}
         </h1>
         <p className="mt-1.5 text-[14px] leading-relaxed text-secondary">
           Give your team a home for system explanations, coding standards, and
@@ -49,7 +59,7 @@ export default async function NewProjectPage() {
         </p>
 
         <div className="mt-7">
-          <NewProjectForm parents={parents} />
+          <NewProjectForm parents={parents} defaultParent={parent?.id ?? ""} />
         </div>
       </main>
     </div>

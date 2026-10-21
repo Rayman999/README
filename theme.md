@@ -213,7 +213,7 @@ A cover page and table of contents for someone new to the project — wider than
 2. **Stats strip** — pages, time to read it all, sections, last updated, contributors.
 3. **New since your last visit** — pages edited after you last read them, and pages added since your last visit.
 4. **Contents** — a reading map (one bar, a segment per section sized by reading time, filled by what you've read), then numbered chapters with page rows, minutes and read marks.
-5. **Reference column** — glossary, where the code starts (entry points), house rules (conventions), open questions, connected projects (parent, sub-projects, related). Empty panels are hidden from readers and shown with a hint to editors.
+5. **Reference column** — glossary, where the code starts (entry points), house rules (conventions), open questions, related projects. Parent projects appear in the breadcrumb and child projects in a "Projects in …" grid above the contents. Empty panels are hidden from readers and shown with a hint to editors.
 
 ---
 

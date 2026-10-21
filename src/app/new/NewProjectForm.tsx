@@ -11,8 +11,10 @@ const HINT = "mt-1.5 text-[11.5px] leading-relaxed text-muted";
 
 export function NewProjectForm({
   parents,
+  defaultParent,
 }: {
-  parents: { id: string; name: string }[];
+  parents: { id: string; label: string }[];
+  defaultParent: string;
 }) {
   const [state, formAction, pending] = useActionState<NewProjectState, FormData>(
     createProject,
@@ -98,26 +100,26 @@ export function NewProjectForm({
 
         <div>
           <label htmlFor="parentId" className={LABEL}>
-            Parent project
+            Inside
           </label>
           <select
             id="parentId"
             name="parentId"
-            defaultValue=""
+            defaultValue={defaultParent}
             disabled={parents.length === 0}
             className={`${INPUT} h-10 disabled:opacity-50`}
           >
-            <option value="">None — top level</option>
+            <option value="">Nothing (top level)</option>
             {parents.map((p) => (
               <option key={p.id} value={p.id}>
-                {p.name}
+                {p.label}
               </option>
             ))}
           </select>
           <p className={HINT}>
             {parents.length === 0
               ? "No other projects yet."
-              : "Nesting is one level deep."}
+              : "Put it inside another project to group them, e.g. Tilde / Website."}
           </p>
         </div>
       </div>

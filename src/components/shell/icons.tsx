@@ -16,6 +16,8 @@ export const ICONS = {
   close: "M12 4L4 12M4 4l8 8",
   plus: "M8 3.5v9M3.5 8h9",
   trash: "M2.5 4.5h11M6 4.5V2.5h4v2M4 4.5l.5 9h7l.5-9M6.5 7v4M9.5 7v4",
+  // Projects (which can hold projects) get a stack, so they never read as folders.
+  project: "M2.5 6h11v7.5h-11zM4 3.75h8M5.5 1.5h5",
   folder: "M1.5 4.5a1 1 0 0 1 1-1h3l1.5 1.5h5.5a1 1 0 0 1 1 1v6a1 1 0 0 1-1 1h-10a1 1 0 0 1-1-1z",
   book: "M2.5 2.5h4a2 2 0 0 1 2 2v9a1.5 1.5 0 0 0-1.5-1.5h-4.5zM13.5 2.5h-4a2 2 0 0 0-2 2v9a1.5 1.5 0 0 1 1.5-1.5h4.5z",
   user: "M13.5 14v-1.5a3 3 0 0 0-3-3h-5a3 3 0 0 0-3 3V14M8 7.5a2.75 2.75 0 1 0 0-5.5 2.75 2.75 0 0 0 0 5.5Z",

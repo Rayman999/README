@@ -2,12 +2,13 @@ import "server-only";
 import { and, eq, inArray, isNull, or, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { pageRevisions, pages, projectLinks, projects } from "@/db/schema";
+import { listProjectTree } from "@/lib/projects";
 
 export const WORDS_PER_MINUTE = 230;
 
 /** Everything the project overview shows beyond the page tree itself. */
-export async function getProjectOverviewData(project: { id: string; parentId: string | null }) {
-  const [wordRows, contributorRows, children, parent, linkRows] = await Promise.all([
+export async function getProjectOverviewData(project: { id: string; workspaceId: string }) {
+  const [wordRows, contributorRows, tree, linkRows] = await Promise.all([
     // `body` holds Markdown, or the derived search text for structured
     // documents, so it is a fair basis for reading time either way.
     db
@@ -27,22 +28,34 @@ export async function getProjectOverviewData(project: { id: string; parentId: st
       .from(pageRevisions)
       .innerJoin(pages, eq(pageRevisions.pageId, pages.id))
       .where(eq(pages.projectId, project.id)),
-    db
-      .select({ id: projects.id, slug: projects.slug, name: projects.name, summary: projects.summary })
-      .from(projects)
-      .where(eq(projects.parentId, project.id))
-      .orderBy(projects.name),
-    project.parentId
-      ? db.query.projects.findFirst({
-          where: eq(projects.id, project.parentId),
-          columns: { slug: true, name: true, summary: true },
-        })
-      : Promise.resolve(undefined),
+    listProjectTree(project.workspaceId),
     db
       .select({ projectId: projectLinks.projectId, linkedProjectId: projectLinks.linkedProjectId })
       .from(projectLinks)
       .where(or(eq(projectLinks.projectId, project.id), eq(projectLinks.linkedProjectId, project.id))),
   ]);
+
+  // Where this project sits, and the projects directly inside it, each with
+  // how much it holds so the cards can say so.
+  const place = tree.find((row) => row.id === project.id);
+  const childIds = (place?.children ?? []).map((child) => child.id);
+  const pageCounts = childIds.length
+    ? await db.select({ projectId: pages.projectId, value: sql<number>`count(*)::int` })
+        .from(pages).where(and(inArray(pages.projectId, childIds), isNull(pages.deletedAt))).groupBy(pages.projectId)
+    : [];
+  const pagesIn = new Map(pageCounts.map((row) => [row.projectId, row.value]));
+  const children = (place?.children ?? []).map((child) => ({
+    slug: child.slug,
+    name: child.name,
+    summary: child.summary,
+    status: child.status,
+    pages: pagesIn.get(child.id) ?? 0,
+    projects: tree.find((row) => row.id === child.id)?.children.length ?? 0,
+  }));
+  // Valid destinations for "Move": anything not inside this project.
+  const moveTargets = tree
+    .filter((row) => row.id !== project.id && !row.ancestors.some((a) => a.id === project.id))
+    .map((row) => ({ id: row.id, label: row.path.join(" / ") }));
 
   // Links are stored one way; show them from either side.
   const relatedIds = [...new Set(linkRows.map((row) => (row.projectId === project.id ? row.linkedProjectId : row.projectId)))];
@@ -59,8 +72,10 @@ export async function getProjectOverviewData(project: { id: string; parentId: st
       wordRows.map((row) => [row.id, { words: row.words, minutes: Math.max(1, Math.round(row.words / WORDS_PER_MINUTE)), createdAt: row.createdAt }]),
     ),
     contributors: contributorRows[0] ?? { people: 0, agentEdits: 0, edits: 0 },
+    ancestors: (place?.ancestors ?? []).map((a) => ({ slug: a.slug, name: a.name })),
+    parentId: place?.ancestors.at(-1)?.id ?? null,
     children,
-    parent: parent ?? null,
+    moveTargets,
     related,
   };
 }

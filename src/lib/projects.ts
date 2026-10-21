@@ -1,6 +1,7 @@
 import { and, asc, eq, isNull, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { isWithin, orderFolders } from "@/lib/folders";
+import { isProjectWithin, orderProjects } from "@/lib/project-tree";
 import { learningPaths, pageRevisions, pages, projects, sections } from "@/db/schema";
 import { documentSchema, documentText, type ReadmeDocument } from "./documents/schema";
 
@@ -14,13 +15,12 @@ export async function listProjects(workspaceId: string) {
     .orderBy(asc(projects.name));
 }
 
-/** Top-level projects only — the valid parents, since nesting is one deep. */
-export async function listTopLevelProjects(workspaceId: string) {
-  return db
-    .select({ id: projects.id, name: projects.name })
+/** Every project in tree order, each with its depth, path and children. */
+export async function listProjectTree(workspaceId: string) {
+  return orderProjects(await db
+    .select({ id: projects.id, slug: projects.slug, name: projects.name, summary: projects.summary, status: projects.status, parentId: projects.parentId })
     .from(projects)
-    .where(and(eq(projects.workspaceId, workspaceId), isNull(projects.parentId)))
-    .orderBy(asc(projects.name));
+    .where(eq(projects.workspaceId, workspaceId)));
 }
 
 export async function getProjectBySlug(workspaceId: string, slug: string) {
@@ -29,12 +29,19 @@ export async function getProjectBySlug(workspaceId: string, slug: string) {
   });
 }
 
-/** Foreign keys remove project content and keep sub-projects as top-level projects. */
+/**
+ * Foreign keys remove the project's own content. Projects inside it move up
+ * to its parent rather than jumping to the top level.
+ */
 export async function deleteProject(workspaceId: string, slug: string, id: string) {
-  const [row] = await db.delete(projects)
-    .where(and(eq(projects.workspaceId, workspaceId), eq(projects.slug, slug), eq(projects.id, id)))
-    .returning({ id: projects.id });
-  return row;
+  return db.transaction(async (tx) => {
+    const [target] = await tx.select({ parentId: projects.parentId }).from(projects)
+      .where(and(eq(projects.workspaceId, workspaceId), eq(projects.slug, slug), eq(projects.id, id)));
+    if (!target) return undefined;
+    await tx.update(projects).set({ parentId: target.parentId }).where(eq(projects.parentId, id));
+    const [row] = await tx.delete(projects).where(eq(projects.id, id)).returning({ id: projects.id });
+    return row;
+  });
 }
 
 export type ProjectDetails = {
@@ -81,20 +88,23 @@ export async function getProjectTree(projectId: string) {
   };
 }
 
-/**
- * BUILD.md §4: parent_id is one level deep. Reject a project whose chosen
- * parent already has a parent, rather than silently flattening it.
- * Returns an error message, or null when the parent is valid.
- */
-export async function validateParent(parentId: string) {
+/** Projects nest to any depth. Returns an error message, or null when valid. */
+export async function validateParent(workspaceId: string, parentId: string) {
   const parent = await db.query.projects.findFirst({
-    where: eq(projects.id, parentId),
+    where: and(eq(projects.workspaceId, workspaceId), eq(projects.id, parentId)),
   });
-  if (!parent) return "That parent project does not exist.";
-  if (parent.parentId) {
-    return "Projects can only nest one level deep. Choose a top-level parent.";
-  }
-  return null;
+  return parent ? null : "That parent project does not exist.";
+}
+
+/** Moves a project under another project, or to the top level with null. */
+export async function moveProject(workspaceId: string, projectId: string, parentId: string | null) {
+  const rows = await db.select({ id: projects.id, slug: projects.slug, name: projects.name, parentId: projects.parentId })
+    .from(projects).where(eq(projects.workspaceId, workspaceId));
+  if (!rows.some((row) => row.id === projectId)) return { error: "Project not found." } as const;
+  if (parentId && !rows.some((row) => row.id === parentId)) return { error: "The destination project does not exist." } as const;
+  if (parentId && isProjectWithin(rows, parentId, projectId)) return { error: "A project can't be moved inside itself or one of its own projects." } as const;
+  const [row] = await db.update(projects).set({ parentId, updatedAt: new Date() }).where(eq(projects.id, projectId)).returning();
+  return { project: row } as const;
 }
 
 // ---------------------------------------------------------------------------

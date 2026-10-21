@@ -13,12 +13,16 @@ import { ReadingRecordsProvider, type PageRecord } from "@/components/reading/Re
 
 const EMPTY_PROGRESS: Record<string, PageRecord> = {};
 
+type ProjectLink = { slug: string; name: string };
+
 export function AppShell({
   sections,
   currentHref,
   toc,
   projectName,
   projectHref,
+  projectTrail = [],
+  childProjects = [],
   signOutAction,
   userEmail,
   progress = EMPTY_PROGRESS,
@@ -29,6 +33,10 @@ export function AppShell({
   toc: TocEntry[];
   projectName?: string;
   projectHref?: string;
+  /** Projects this one sits inside, top-level first. */
+  projectTrail?: ProjectLink[];
+  /** Projects directly inside this one. */
+  childProjects?: ProjectLink[];
   signOutAction?: () => Promise<void>;
   userEmail?: string | null;
   /** This reader's progress through the project's pages, keyed by page id. */
@@ -72,6 +80,8 @@ export function AppShell({
             currentHref={currentHref}
             projectName={projectName}
             projectHref={projectHref}
+            projectTrail={projectTrail}
+            childProjects={childProjects}
           />
         </aside>
 
@@ -101,7 +111,8 @@ export function AppShell({
           <Icon path={ICONS.close} size={16} />
         </button>
         <SidebarNav sections={sections} currentHref={currentHref}
-          projectName={projectName} projectHref={projectHref} />
+          projectName={projectName} projectHref={projectHref}
+          projectTrail={projectTrail} childProjects={childProjects} />
       </MotionDialog>
     </div>
     </ReadingRecordsProvider>

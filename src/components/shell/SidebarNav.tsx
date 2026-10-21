@@ -176,16 +176,22 @@ function Folder({
   );
 }
 
+type ProjectLink = { slug: string; name: string };
+
 export function SidebarNav({
   sections,
   currentHref,
   projectName,
   projectHref,
+  projectTrail = [],
+  childProjects = [],
 }: {
   sections: NavSection[];
   currentHref: string;
   projectName?: string;
   projectHref?: string;
+  projectTrail?: ProjectLink[];
+  childProjects?: ProjectLink[];
 }) {
   const [query, setQuery] = useState("");
   // Read synchronously from a shared store: the sidebar remounts on every
@@ -258,6 +264,17 @@ export function SidebarNav({
         Your highlights
       </Link>
 
+      {projectName && projectTrail.length > 0 && (
+        <nav aria-label="Inside" className="mb-1 flex flex-wrap items-center gap-1 px-2 text-[11.5px] text-muted">
+          {projectTrail.map((ancestor) => (
+            <span key={ancestor.slug} className="flex items-center gap-1">
+              <Link href={`/p/${ancestor.slug}`} className="ease-base truncate transition-colors duration-200 hover:text-secondary">{ancestor.name}</Link>
+              <span aria-hidden className="opacity-55">/</span>
+            </span>
+          ))}
+        </nav>
+      )}
+
       {projectName && (
         <Link
           href={projectHref ?? "#"}
@@ -265,9 +282,28 @@ export function SidebarNav({
             currentHref === projectHref ? "bg-state-selected text-primary" : "text-secondary hover:bg-state-hover hover:text-primary"
           }`}
         >
-          <span className="text-muted"><Icon path={ICONS.book} /></span>
+          <span className="text-muted"><Icon path={ICONS.project} /></span>
           <span className="truncate">{projectName}</span>
         </Link>
+      )}
+
+      {childProjects.length > 0 && (
+        <div className="mb-4">
+          <p className="mb-1 px-2 text-[10.5px] font-semibold tracking-[0.07em] text-muted uppercase">Projects</p>
+          <ul>
+            {childProjects.map((child) => (
+              <li key={child.slug}>
+                <Link
+                  href={`/p/${child.slug}`}
+                  className="ease-base flex h-[29px] items-center gap-2 rounded-control px-2 text-[13px] text-secondary transition-colors duration-200 hover:bg-state-hover hover:text-primary"
+                >
+                  <span className="text-muted"><Icon path={ICONS.project} size={13} /></span>
+                  <span className="truncate">{child.name}</span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </div>
       )}
 
       <JourneyHeader order={order} />
