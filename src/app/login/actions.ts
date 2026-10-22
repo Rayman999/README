@@ -61,6 +61,16 @@ export async function signUpWithPassword(
   _prev: FormState,
   formData: FormData,
 ): Promise<FormState> {
+  // Check before validation or account lookup, including requests from stale
+  // forms. Closed registration must not expose whether an email is registered.
+  try {
+    if (!(await registrationAllowed())) {
+      return { error: "Registration is closed. Ask a workspace owner to add you." };
+    }
+  } catch {
+    return { error: DATABASE_ERROR };
+  }
+
   const parsed = signUpSchema.safeParse({
     name: formData.get("name"),
     email: formData.get("email"),

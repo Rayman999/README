@@ -36,13 +36,14 @@ export default async function LoginPage({
   );
 
   let isFirstUser = false;
-  let registrationClosed = false;
+  // Fail closed: never offer registration unless its setting was read.
+  let signUpAllowed = false;
   let workspaceName: string | null = null;
   try {
     const [{ value }] = await db.select({ value: count() }).from(users);
-    isFirstUser = value === 0;
     const workspace = await getWorkspace();
-    registrationClosed = Boolean(workspace && !workspace.registrationOpen);
+    signUpAllowed = workspace ? workspace.registrationOpen : true;
+    isFirstUser = value === 0 && signUpAllowed;
     workspaceName = workspace?.name ?? null;
   } catch {
     // Database unreachable — still render the form rather than erroring out.
@@ -102,15 +103,9 @@ export default async function LoginPage({
             githubAction={githubAction}
             githubConfigured={githubConfigured}
             isFirstUser={isFirstUser}
-            signUpAllowed={isFirstUser || !registrationClosed}
+            signUpAllowed={signUpAllowed}
           />
         </div>
-
-        {registrationClosed && !isFirstUser && (
-          <p className="mt-5 text-center text-[11.5px] leading-relaxed text-muted">
-            Sign-up is closed. Ask an owner for an account.
-          </p>
-        )}
 
         {/* Configuration guidance belongs to whoever is running the app, not
             to whoever is signing in — so it stops at the dev build. */}

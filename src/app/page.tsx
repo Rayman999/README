@@ -4,17 +4,10 @@ import { auth, signOut } from "@/auth";
 import { getWorkspace } from "@/lib/workspace";
 import { listProjectTree } from "@/lib/projects";
 import { Header } from "@/components/shell/Header";
-import { DeleteProjectButton } from "@/components/projects/DeleteProjectButton";
+import { ProjectLibrary } from "@/components/projects/ProjectLibrary";
 import { Icon, ICONS, HEADER_H } from "@/components/shell/icons";
 
 export const dynamic = "force-dynamic";
-
-const STATUS_LABEL: Record<string, string> = {
-  active: "Active",
-  maintenance: "Maintenance",
-  archived: "Archived",
-  planned: "Planned",
-};
 
 export default async function Home() {
   const session = await auth();
@@ -67,10 +60,9 @@ export default async function Home() {
         </div>
 
         <h2 className="sr-only">Projects</h2>
-        <div className="mt-10" />
 
         {libraryProjects.length === 0 ? (
-          <div className="auth-panel px-8 py-12 text-center">
+          <div className="auth-panel mt-10 px-8 py-12 text-center">
             <span className="mx-auto flex h-10 w-10 items-center justify-center rounded-[11px] border border-border-visible bg-ink/[0.03] text-tertiary">
               <Icon path={ICONS.doc} size={17} />
             </span>
@@ -92,52 +84,11 @@ export default async function Home() {
             )}
           </div>
         ) : (
-          <ul className="stagger grid gap-3 sm:grid-cols-2">
-            {libraryProjects.map((project) => {
-              const children = project.children;
-              return (
-                <li key={project.id}>
-                  <div className="project-card ease-base flex h-full flex-col rounded-code border border-border-subtle bg-ink/[0.018] transition-[background-color,transform] duration-200 hover:bg-ink/[0.035]">
-                    <Link
-                      href={`/p/${project.slug}`}
-                      className="project-card-link block flex-1 rounded-code"
-                    >
-                      <div className="flex items-baseline justify-between gap-3">
-                        <span className="text-[14px] font-medium text-primary">
-                          {project.name}
-                        </span>
-                        <span className="shrink-0 text-[10.5px] tracking-[0.06em] text-muted uppercase">
-                          {STATUS_LABEL[project.status] ?? project.status}
-                        </span>
-                      </div>
-                      <p className="mt-1.5 line-clamp-2 text-[13px] leading-relaxed text-secondary">
-                        {project.summary}
-                      </p>
-                    </Link>
-                    {children.length > 0 && (
-                      <ul aria-label={`Projects in ${project.name}`} className="mt-3 flex flex-wrap gap-1.5">
-                        {children.slice(0, 6).map((child) => (
-                          <li key={child.id}>
-                            <Link
-                              href={`/p/${child.slug}`}
-                              className="ease-base flex h-7 items-center gap-1.5 rounded-control border border-border-subtle px-2.5 text-[12px] text-secondary transition-colors duration-200 hover:bg-ink/[0.05] hover:text-primary"
-                            >
-                              <Icon path={ICONS.project} size={12} />
-                              {child.name}
-                            </Link>
-                          </li>
-                        ))}
-                        {children.length > 6 && (
-                          <li className="flex h-7 items-center px-1 text-[12px] text-muted">+{children.length - 6} more</li>
-                        )}
-                      </ul>
-                    )}
-                    {canEdit && <DeleteProjectButton project={{ id: project.id, slug: project.slug, name: project.name }} />}
-                  </div>
-                </li>
-              );
-            })}
-          </ul>
+          <ProjectLibrary
+            projects={libraryProjects}
+            canEdit={canEdit}
+            storageKey={`readme:project-favorites:${workspace?.id}:${session.user.id}`}
+          />
         )}
       </main>
     </div>
